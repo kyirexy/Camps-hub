@@ -1,0 +1,11 @@
+/* 全局布局样式 */
+.main-nav,
+.user-info-card {
+  margin: 0 auto;
+}
+
+/* 最大宽度约束 */
+.nav-menu,
+.user-info-card {
+  max-width: 1200px;
+}

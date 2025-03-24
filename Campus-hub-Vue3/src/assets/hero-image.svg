@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- 背景图形 -->
+    <path d="M600 100C680 150 750 250 780 350C810 450 750 550 650 580C550 610 400 590 300 550C200 510 150 450 100 350C50 250 80 150 150 100C220 50 350 20 450 50C550 80 520 50 600 100Z" fill="#E6F3FF"/>
+    
+    <!-- 装饰圆点 -->
+    <circle cx="200" cy="150" r="8" fill="#409EFF" opacity="0.2"/>
+    <circle cx="600" cy="400" r="12" fill="#409EFF" opacity="0.3"/>
+    <circle cx="400" cy="200" r="10" fill="#409EFF" opacity="0.4"/>
+    
+    <!-- 主要图形 -->
+    <g transform="translate(250, 150)">
+        <!-- 笔记本电脑 -->
+        <rect x="50" y="50" width="200" height="140" rx="10" fill="#409EFF"/>
+        <rect x="70" y="70" width="160" height="100" fill="white"/>
+        <rect x="20" y="190" width="260" height="10" rx="5" fill="#409EFF"/>
+        
+        <!-- 书本 -->
+        <path d="M300 100H400C410 100 420 110 420 120V220C420 230 410 240 400 240H300V100Z" fill="#409EFF" opacity="0.8"/>
+        <path d="M300 100H310C320 100 330 110 330 120V220C330 230 320 240 310 240H300V100Z" fill="#007FFF"/>
+        
+        <!-- 铅笔 -->
+        <rect transform="rotate(-45 350 150)" x="320" y="120" width="100" height="15" rx="7.5" fill="#FFB800"/>
+        <path transform="rotate(-45 350 150)" d="M420 120H440L430 135L420 120Z" fill="#E65D38"/>
+    </g>
+    
+    <!-- 装饰线条 -->
+    <path d="M100 500C200 450 400 480 500 450" stroke="#409EFF" stroke-width="2" opacity="0.3"/>
+    <path d="M600 200C500 250 400 220 300 250" stroke="#409EFF" stroke-width="2" opacity="0.3"/>
+</svg> 
