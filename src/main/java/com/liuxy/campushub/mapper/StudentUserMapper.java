@@ -48,4 +48,13 @@ public interface StudentUserMapper {
     @Select("SELECT * FROM student_user WHERE username = #{loginId} OR student_number = #{loginId} OR phone = #{loginId}")
     @ResultMap("userResultMap")
     StudentUser findByLoginId(@Param("loginId") String loginId);
+
+    @Update("UPDATE student_user SET " +
+            "real_name = #{realName}, " +
+            "phone = #{phone}, " +
+            "email = #{email}, " +
+            "bio = #{bio}, " +
+            "password = #{password} " +
+            "WHERE user_id = #{userId}")
+    int update(StudentUser studentUser);
 }

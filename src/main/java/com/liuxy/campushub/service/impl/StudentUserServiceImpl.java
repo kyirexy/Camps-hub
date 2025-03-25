@@ -40,56 +40,32 @@ public class StudentUserServiceImpl implements StudentUserService {
                     .build();
         }
 
-        // 检查学号是否已存在
-        if (studentUserMapper.findByStudentNumber(request.getStudentNumber()) != null) {
-            logger.info("Student number already exists: {}", request.getStudentNumber());
-            return RegisterResponse.builder()
-                    .success(false)
-                    .message("学号已被注册")
-                    .build();
-        }
-
-        // 检查手机号是否已存在
-        if (studentUserMapper.findByPhone(request.getPhone()) != null) {
-            logger.info("Phone number already exists: {}", request.getPhone());
-            return RegisterResponse.builder()
-                    .success(false)
-                    .message("手机号已被注册")
-                    .build();
-        }
-
-        // 检查邮箱是否已存在
-        if (studentUserMapper.findByEmail(request.getEmail()) != null) {
-            logger.info("Email already exists: {}", request.getEmail());
-            return RegisterResponse.builder()
-                    .success(false)
-                    .message("邮箱已被注册")
-                    .build();
-        }
-
         try {
             logger.debug("Creating new user entity for username: {}", request.getUsername());
             // 创建用户实体
             StudentUser studentUser = new StudentUser();
+            // 基本信息
             studentUser.setUsername(request.getUsername());
             studentUser.setPassword(passwordEncoder.encode(request.getPassword()));
-            studentUser.setRealName(request.getRealName());
-            studentUser.setStudentNumber(request.getStudentNumber());
-            studentUser.setGender(request.getGender());
-            studentUser.setPhone(request.getPhone());
-            studentUser.setEmail(request.getEmail());
-            studentUser.setCollegeId(request.getCollegeId());
-            studentUser.setMajor(request.getMajor());
-            studentUser.setGrade(request.getGrade());
+            studentUser.setRealName(request.getUsername()); // 默认使用用户名作为真实姓名
+            studentUser.setStudentNumber(""); // 空字符串，后续完善
+            studentUser.setGender("O"); // 默认其他
+            studentUser.setPhone(""); // 空字符串，后续完善
+            studentUser.setEmail(""); // 空字符串，后续完善
+            
+            // 院系信息
+            studentUser.setCollegeId(0); // 默认院系ID为0
+            studentUser.setCollegeName(""); // 空字符串，后续完善
+            studentUser.setMajor(""); // 空字符串，后续完善
+            studentUser.setGrade(2024); // 默认当前年份
+            
+            // 系统信息
             studentUser.setUserRole(1); // 默认普通用户
-            studentUser.setStatus(1); // 默认正常状态
-            studentUser.setCreditScore(100); // 默认信用分
-            studentUser.setBio(request.getBio());
-
-            // 如果有教务系统密码，加密存储
-            if (request.getJwPassword() != null && !request.getJwPassword().isEmpty()) {
-                studentUser.setJwPassword(passwordEncoder.encode(request.getJwPassword()));
-            }
+            studentUser.setStatus(1); // 默认未激活状态
+            studentUser.setBio(""); // 空字符串，后续完善
+            studentUser.setJwPassword(null); // 教务密码默认为null
+            studentUser.setCreditScore(100); // 默认信用分100
+            studentUser.setAvatarUrl(""); // 默认空头像
 
             logger.debug("Attempting to insert new user into database");
             // 保存用户
@@ -171,5 +147,57 @@ public class StudentUserServiceImpl implements StudentUserService {
         logger.info("用户 [{}] 登录成功", user.getUsername());
         String token = jwtTokenUtil.generateToken(user.getUserId(), user.getUsername(), user.getUserRole());
         return LoginResponse.success(user.getUserId(), user.getUsername(), user.getUserRole(), token);
+    }
+
+    @Override
+    public UpdateResponse updateUserInfo(Long userId, UpdateUserRequest request) {
+        StudentUser user = studentUserMapper.selectById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+
+        // 更新用户信息
+        if (request.getRealName() != null) {
+            user.setRealName(request.getRealName());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+        }
+        if (request.getEmail() != null) {
+            user.setEmail(request.getEmail());
+        }
+        if (request.getBio() != null) {
+            user.setBio(request.getBio());
+        }
+
+        try {
+            studentUserMapper.update(user);
+            return new UpdateResponse(true, "用户信息更新成功");
+        } catch (Exception e) {
+            throw new RuntimeException("更新用户信息失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    public UpdateResponse changePassword(Long userId, ChangePasswordRequest request) {
+        StudentUser user = studentUserMapper.selectById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+
+        // 验证旧密码
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            return new UpdateResponse(false, "旧密码错误");
+        }
+
+        // 更新密码
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+
+        try {
+            studentUserMapper.update(user);
+            return new UpdateResponse(true, "密码修改成功");
+        } catch (Exception e) {
+            throw new RuntimeException("修改密码失败：" + e.getMessage());
+        }
     }
 }
