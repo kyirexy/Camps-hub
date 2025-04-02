@@ -48,15 +48,25 @@ public class StudentUserServiceImpl implements StudentUserService {
             studentUser.setUsername(request.getUsername());
             studentUser.setPassword(passwordEncoder.encode(request.getPassword()));
             studentUser.setRealName(request.getUsername()); // 默认使用用户名作为真实姓名
-            studentUser.setStudentNumber(""); // 空字符串，后续完善
+            // 生成12位的临时学号：T + 时间戳后8位 + 用户名前3位
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            String tempStudentNumber = "T" + timestamp.substring(timestamp.length() - 8) + 
+                request.getUsername().substring(0, Math.min(3, request.getUsername().length()));
+            studentUser.setStudentNumber(tempStudentNumber);
             studentUser.setGender("O"); // 默认其他
-            studentUser.setPhone(""); // 空字符串，后续完善
-            studentUser.setEmail(""); // 空字符串，后续完善
+            
+            // 生成临时手机号：T + 时间戳后8位
+            String tempPhone = "T" + timestamp.substring(timestamp.length() - 8);
+            studentUser.setPhone(tempPhone);
+            
+            // 生成临时邮箱：T + 时间戳后8位 + @temp.edu
+            String tempEmail = "T" + timestamp.substring(timestamp.length() - 8) + "@temp.edu";
+            studentUser.setEmail(tempEmail);
             
             // 院系信息
             studentUser.setCollegeId(0); // 默认院系ID为0
-            studentUser.setCollegeName(""); // 空字符串，后续完善
-            studentUser.setMajor(""); // 空字符串，后续完善
+            studentUser.setCollegeName("待完善"); // 默认院系名称
+            studentUser.setMajor("待完善"); // 默认专业名称
             studentUser.setGrade(2024); // 默认当前年份
             
             // 系统信息

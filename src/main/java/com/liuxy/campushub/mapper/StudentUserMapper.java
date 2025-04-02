@@ -26,10 +26,14 @@ public interface StudentUserMapper {
     @Select("SELECT * FROM student_user WHERE username = #{username}")
     StudentUser findByUsername(@Param("username") String username);
 
-    @Insert("INSERT INTO student_user (username, password, real_name, student_number, gender, phone, email, " +
-            "college_id, college_name, major, grade, user_role, bio, status, jw_password, credit_score) " +
-            "VALUES (#{username}, #{password}, #{realName}, #{studentNumber}, #{gender}, #{phone}, #{email}, " +
-            "#{collegeId}, #{collegeName}, #{major}, #{grade}, #{userRole}, #{bio}, #{status}, #{jwPassword}, #{creditScore})")
+    @Insert("INSERT INTO student_user (" +
+            "username, password, real_name, student_number, gender, phone, email, " +
+            "college_id, college_name, major, grade, user_role, register_time, last_login, " +
+            "avatar_url, bio, status, jw_password, credit_score) " +
+            "VALUES (" +
+            "#{username}, #{password}, #{realName}, #{studentNumber}, #{gender}, #{phone}, #{email}, " +
+            "#{collegeId}, #{collegeName}, #{major}, #{grade}, #{userRole}, #{registerTime}, #{lastLogin}, " +
+            "#{avatarUrl}, #{bio}, #{status}, #{jwPassword}, #{creditScore})")
     @Options(useGeneratedKeys = true, keyProperty = "userId")
     int insert(StudentUser studentUser);
 

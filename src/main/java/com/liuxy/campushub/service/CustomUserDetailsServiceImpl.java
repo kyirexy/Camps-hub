@@ -1,22 +1,42 @@
 package com.liuxy.campushub.service;
 
-import org.springframework.security.core.userdetails.User;
+import com.liuxy.campushub.entity.StudentUser;
+import com.liuxy.campushub.mapper.StudentUserMapper;
+import com.liuxy.campushub.security.UserDetailsImpl;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
+import java.util.List;
+
 @Service
 public class CustomUserDetailsServiceImpl implements UserDetailsService {
 
+    @Autowired
+    private StudentUserMapper studentUserMapper;
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // TODO: 实现从数据库查询用户信息的逻辑
-        // 示例硬编码用户，实际应从数据库获取
-        return User.builder()
-                .username(username)
-                .password("$2a$10$5vYQ0sMzjB6UqZ6t7Qq1Uu0ZQzX7bWY8l6JcYtK1d3V7gZ8rL9Df2")
-                .roles("USER")
-                .build();
+        StudentUser user = studentUserMapper.findByUsername(username);
+        if (user == null) {
+            throw new UsernameNotFoundException("User not found with username: " + username);
+        }
+
+        // Convert user role to string format
+        String role = "ROLE_USER"; // Default role
+        if (user.getUserRole() == 1) {
+            role = "ROLE_ADMIN";
+        }
+
+        return UserDetailsImpl.build(
+            user.getUserId(),
+            user.getUsername(),
+            user.getPassword(),
+            user.getEmail(),
+            Arrays.asList(role)
+        );
     }
 }
