@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liuxy.campushub.mapper.ProductMapper">
+    
+    <!-- 查询商品列表 -->
+    <select id="selectProductList" resultType="com.liuxy.campushub.entity.Product">
+        SELECT p.*, u.username as seller_username
+        FROM product p
+        LEFT JOIN student_user u ON p.seller_id = u.user_id
+        <where>
+            <if test="categoryId != null">
+                AND p.category_id = #{categoryId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (p.title LIKE CONCAT('%', #{keyword}, '%') OR p.description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="minPrice != null">
+                AND (
+                    (p.price_type = '区间报价' AND p.min_price >= #{minPrice})
+                    OR (p.price_type = '固定价' AND p.expect_price >= #{minPrice})
+                )
+            </if>
+            <if test="maxPrice != null">
+                AND (
+                    (p.price_type = '区间报价' AND p.max_price &lt;= #{maxPrice})
+                    OR (p.price_type = '固定价' AND p.expect_price &lt;= #{maxPrice})
+                )
+            </if>
+            <if test="status != null and status != ''">
+                AND p.status = #{status}
+            </if>
+        </where>
+        <choose>
+            <when test="sortField != null and sortField != '' and sortOrder != null and sortOrder != ''">
+                ORDER BY
+                <choose>
+                    <when test="sortField == 'createTime'">p.create_time</when>
+                    <when test="sortField == 'price'">
+                        <choose>
+                            <when test="sortOrder == 'asc'">
+                                CASE
+                                    WHEN p.price_type = '固定价' THEN p.expect_price
+                                    WHEN p.price_type = '区间报价' THEN p.min_price
+                                    ELSE 0
+                                END
+                            </when>
+                            <otherwise>
+                                CASE
+                                    WHEN p.price_type = '固定价' THEN p.expect_price
+                                    WHEN p.price_type = '区间报价' THEN p.max_price
+                                    ELSE 0
+                                END
+                            </otherwise>
+                        </choose>
+                    </when>
+                    <when test="sortField == 'viewCount'">p.view_count</when>
+                    <otherwise>p.create_time</otherwise>
+                </choose>
+                <choose>
+                    <when test="sortOrder == 'asc'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <otherwise>
+                ORDER BY p.create_time DESC
+            </otherwise>
+        </choose>
+        <if test="offset != null and pageSize != null">
+            LIMIT #{offset}, #{pageSize}
+        </if>
+    </select>
+    
+    <!-- 查询商品总数 -->
+    <select id="countProductList" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM product p
+        <where>
+            <if test="categoryId != null">
+                AND p.category_id = #{categoryId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (p.title LIKE CONCAT('%', #{keyword}, '%') OR p.description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="minPrice != null">
+                AND (
+                    (p.price_type = '区间报价' AND p.min_price >= #{minPrice})
+                    OR (p.price_type = '固定价' AND p.expect_price >= #{minPrice})
+                )
+            </if>
+            <if test="maxPrice != null">
+                AND (
+                    (p.price_type = '区间报价' AND p.max_price &lt;= #{maxPrice})
+                    OR (p.price_type = '固定价' AND p.expect_price &lt;= #{maxPrice})
+                )
+            </if>
+            <if test="status != null and status != ''">
+                AND p.status = #{status}
+            </if>
+        </where>
+    </select>
+    
+</mapper>

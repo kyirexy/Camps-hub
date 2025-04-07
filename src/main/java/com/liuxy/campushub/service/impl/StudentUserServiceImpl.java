@@ -12,6 +12,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 public class StudentUserServiceImpl implements StudentUserService {
 
@@ -76,6 +78,7 @@ public class StudentUserServiceImpl implements StudentUserService {
             studentUser.setJwPassword(null); // 教务密码默认为null
             studentUser.setCreditScore(100); // 默认信用分100
             studentUser.setAvatarUrl(""); // 默认空头像
+            studentUser.setRegisterTime(LocalDateTime.now());//时间为当前时间
 
             logger.debug("Attempting to insert new user into database");
             // 保存用户

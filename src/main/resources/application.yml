@@ -1,0 +1,9 @@
+jwt:
+  secret: your-secret-key-should-be-very-long-and-secure
+  expiration: 86400  # 24 hours in seconds
+
+logging:
+  level:
+    com.zaxxer.hikari: ERROR
+    com.zaxxer.hikari.HikariConfig: ERROR
+    com.zaxxer.hikari.pool.HikariPool: ERROR 
