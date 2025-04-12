@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liuxy.campushub.mapper.PostMapper">
+    <!-- ... existing mappings ... -->
+    
+    <select id="selectForScroll" resultType="com.liuxy.campushub.vo.PostVO">
+        SELECT 
+            p.post_id as postId,
+            p.title,
+            c.name as categoryName,
+            p.post_type as postType,
+            p.bounty_amount as bountyAmount,
+            p.emergency_level as emergencyLevel,
+            p.view_count as viewCount,
+            p.like_count as likeCount,
+            p.comment_count as commentCount,
+            p.created_at as createdAt,
+            p.user_id as userId,
+            u.username as username,
+            u.avatar as avatar
+        FROM post p
+        LEFT JOIN category c ON p.category_id = c.category_id
+        LEFT JOIN user u ON p.user_id = u.user_id
+        WHERE p.status = 'published'
+        <if test="lastTime != null">
+            AND p.created_at &lt; #{lastTime}
+        </if>
+        ORDER BY p.created_at DESC
+        LIMIT #{pageSize}
+    </select>
+    
+    <select id="selectByCategoryForScroll" resultType="com.liuxy.campushub.vo.PostVO">
+        SELECT 
+            p.post_id as postId,
+            p.title,
+            c.name as categoryName,
+            p.post_type as postType,
+            p.bounty_amount as bountyAmount,
+            p.emergency_level as emergencyLevel,
+            p.view_count as viewCount,
+            p.like_count as likeCount,
+            p.comment_count as commentCount,
+            p.created_at as createdAt,
+            p.user_id as userId,
+            u.username as username,
+            u.avatar as avatar
+        FROM post p
+        LEFT JOIN category c ON p.category_id = c.category_id
+        LEFT JOIN user u ON p.user_id = u.user_id
+        WHERE p.status = 'published'
+        AND p.category_id = #{categoryId}
+        <if test="lastTime != null">
+            AND p.created_at &lt; #{lastTime}
+        </if>
+        ORDER BY p.created_at DESC
+        LIMIT #{pageSize}
+    </select>
+    
+    <select id="selectByUserForScroll" resultType="com.liuxy.campushub.vo.PostVO">
+        SELECT 
+            p.post_id as postId,
+            p.title,
+            c.name as categoryName,
+            p.post_type as postType,
+            p.bounty_amount as bountyAmount,
+            p.emergency_level as emergencyLevel,
+            p.view_count as viewCount,
+            p.like_count as likeCount,
+            p.comment_count as commentCount,
+            p.created_at as createdAt,
+            p.user_id as userId,
+            u.username as username,
+            u.avatar as avatar
+        FROM post p
+        LEFT JOIN category c ON p.category_id = c.category_id
+        LEFT JOIN user u ON p.user_id = u.user_id
+        WHERE p.status = 'published'
+        AND p.user_id = #{userId}
+        <if test="lastTime != null">
+            AND p.created_at &lt; #{lastTime}
+        </if>
+        ORDER BY p.created_at DESC
+        LIMIT #{pageSize}
+    </select>
+    
+    <!-- 按时间倒序查询帖子列表 -->
+    <select id="selectPostsByTime" resultType="com.liuxy.campushub.vo.PostVO">
+        SELECT 
+            p.post_id as postId,
+            p.title,
+            c.name as categoryName,
+            p.post_type as postType,
+            p.bounty_amount as bountyAmount,
+            p.emergency_level as emergencyLevel,
+            p.view_count as viewCount,
+            p.like_count as likeCount,
+            p.comment_count as commentCount,
+            p.created_at as createdAt,
+            p.user_id as userId,
+            u.username,
+            u.avatar
+        FROM post p
+        LEFT JOIN category c ON p.category_id = c.category_id
+        LEFT JOIN user u ON p.user_id = u.user_id
+        WHERE p.status = 'published'
+        <if test="lastTime != null">
+            AND p.created_at &lt; #{lastTime}
+        </if>
+        ORDER BY p.created_at DESC
+        LIMIT #{pageSize}
+    </select>
+    
+    <!-- ... existing mappings ... -->
+</mapper> 

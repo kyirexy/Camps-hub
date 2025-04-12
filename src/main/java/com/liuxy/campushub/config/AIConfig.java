@@ -31,7 +31,7 @@ public class AIConfig {
                 .build();
     }
 
-    @Bean
+    @Bean(name = "sparkJsonConfig")
     public JSONObject sparkConfig() {
         JSONObject config = new JSONObject();
         config.put("appId", appId);
