@@ -24,6 +24,11 @@ public class SparkConfig {
     private String apiKey;
     
     /**
+     * 知识库ID
+     */
+    private String repoId;
+    
+    /**
      * 文件ID列表
      */
     private String[] fileIds;
@@ -47,4 +52,14 @@ public class SparkConfig {
      * 问答模式
      */
     private String qaMode = "MIX";
+    
+    /**
+     * WebSocket URL
+     */
+    private String websocketUrl = "wss://spark-api.xf-yun.com/v4.0/chat";
+    
+    /**
+     * HTTP URL
+     */
+    private String httpUrl = "https://spark-api-open.xf-yun.com/v1/chat/completions";
 } 

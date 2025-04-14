@@ -64,6 +64,10 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse getProductDetail(Long productId) {
         logger.info("获取商品详情，商品ID：{}", productId);
         try {
+            // 先增加浏览数
+            productMapper.incrementViewCount(productId);
+            
+            // 获取商品详情
             Product product = productMapper.selectById(productId);
             if (product == null) {
                 throw new RuntimeException("商品不存在");

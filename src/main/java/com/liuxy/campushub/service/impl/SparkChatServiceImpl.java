@@ -19,12 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Service
 public class SparkChatServiceImpl implements SparkChatService {
-    private static final Logger logger = LoggerFactory.getLogger(SparkChatServiceImpl.class);
 
     @Autowired
     private SparkConfig sparkConfig;
@@ -48,8 +45,6 @@ public class SparkChatServiceImpl implements SparkChatService {
                 signature
             );
 
-            logger.debug("WebSocket URL: {}", url);
-
             // 创建WebSocket客户端
             StandardWebSocketClient client = new StandardWebSocketClient();
             
@@ -64,22 +59,10 @@ public class SparkChatServiceImpl implements SparkChatService {
 
             // 构建知识库问答请求
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("fileIds", sparkConfig.getFileIds());
+            requestBody.put("fileIds", new String[]{sparkConfig.getRepoId()});
             
             // 构建消息历史
             List<Map<String, String>> messages = new ArrayList<>();
-            
-            // 添加历史消息
-            if (request.getHistory() != null) {
-                for (SparkChatRequest.ChatMessage historyMessage : request.getHistory()) {
-                    Map<String, String> message = new HashMap<>();
-                    message.put("role", historyMessage.getRole());
-                    message.put("content", historyMessage.getContent());
-                    messages.add(message);
-                }
-            }
-            
-            // 添加当前问题
             Map<String, String> userMessage = new HashMap<>();
             userMessage.put("role", "user");
             userMessage.put("content", request.getQuestion());
@@ -91,20 +74,15 @@ public class SparkChatServiceImpl implements SparkChatService {
             chatExtends.put("retrievalFilterPolicy", sparkConfig.getRetrievalFilterPolicy());
             chatExtends.put("temperature", sparkConfig.getTemperature());
             chatExtends.put("qaMode", sparkConfig.getQaMode());
-            chatExtends.put("topN", sparkConfig.getTopN());
             requestBody.put("chatExtends", chatExtends);
 
             // 发送消息
             String message = JSON.toJSONString(requestBody);
-            logger.debug("Sending request: {}", message);
             session.sendMessage(new TextMessage(message));
 
             // 等待响应
-            SparkChatResponse response = future.get(30, TimeUnit.SECONDS);
-            logger.debug("Received response: {}", JSON.toJSONString(response));
-            return response;
+            return future.get(30, TimeUnit.SECONDS);
         } catch (Exception e) {
-            logger.error("Chat request failed", e);
             SparkChatResponse response = new SparkChatResponse();
             response.setCode(500);
             response.setMessage("请求失败: " + e.getMessage());

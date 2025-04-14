@@ -19,6 +19,7 @@ spark:
     app-id: 9c5bc113
     secret: NTYxNzdkOGFlN2FiYjZhZDY3NThlNjIw
     api-key: 718de08d74e1ff9fb2414cff5cb3b2f5
+    repo-id: 2a847196216341fe9fae82a6f2fb31c8
     file-ids: ["2a847196216341fe9fae82a6f2fb31c8"]
     top-n: 5
     retrieval-filter-policy: REGULAR
