@@ -106,6 +106,7 @@ public interface ProductMapper {
      *
      * @param categoryId 分类ID
      * @param keyword 关键词
+     * @param searchType 搜索类型：all-全部，title-标题，description-描述
      * @param minPrice 最低价
      * @param maxPrice 最高价
      * @param status 商品状态
@@ -118,6 +119,7 @@ public interface ProductMapper {
     List<Product> selectProductList(
             @Param("categoryId") Integer categoryId,
             @Param("keyword") String keyword,
+            @Param("searchType") String searchType,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("status") String status,
@@ -131,6 +133,7 @@ public interface ProductMapper {
      *
      * @param categoryId 分类ID
      * @param keyword 关键词
+     * @param searchType 搜索类型：all-全部，title-标题，description-描述
      * @param minPrice 最低价
      * @param maxPrice 最高价
      * @param status 商品状态
@@ -139,6 +142,7 @@ public interface ProductMapper {
     Long countProductList(
             @Param("categoryId") Integer categoryId,
             @Param("keyword") String keyword,
+            @Param("searchType") String searchType,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("status") String status);

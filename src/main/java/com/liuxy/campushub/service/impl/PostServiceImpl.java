@@ -1,10 +1,13 @@
 package com.liuxy.campushub.service.impl;
 
-import com.liuxy.campushub.entity.Post;
+import com.liuxy.campushub.entity.*;
+import com.liuxy.campushub.enums.BountyStatusEnum;
+import com.liuxy.campushub.enums.PostTypeEnum;
 import com.liuxy.campushub.mapper.PostMapper;
 import com.liuxy.campushub.service.PostService;
 import com.liuxy.campushub.service.AttachmentService;
 import com.liuxy.campushub.service.CategoryService;
+import com.liuxy.campushub.service.TopicService;
 import com.liuxy.campushub.vo.PostVO;
 import com.liuxy.campushub.vo.ScrollResult;
 import com.liuxy.campushub.exception.BusinessException;
@@ -17,12 +20,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.CollectionUtils;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.util.List;
-import java.util.UUID;
-import java.util.Base64;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.math.BigDecimal;
+import java.util.*;
+import java.util.stream.Collectors;
+
 /**
  * 帖子服务实现类
  *
@@ -32,16 +33,23 @@ import java.util.Map;
 @Service
 public class PostServiceImpl implements PostService {
 
-    private static final Logger logger = LoggerFactory.getLogger(PostServiceImpl.class);
+    private final PostMapper postMapper;
+    private final AttachmentService attachmentService;
+    private final CategoryService categoryService;
+    private final TopicService topicService;
 
     @Autowired
-    private PostMapper postMapper;
-    
-    @Autowired
-    private AttachmentService attachmentService;
-    
-    @Autowired
-    private CategoryService categoryService;
+    public PostServiceImpl(PostMapper postMapper, 
+                          AttachmentService attachmentService,
+                          CategoryService categoryService,
+                          TopicService topicService) {
+        this.postMapper = postMapper;
+        this.attachmentService = attachmentService;
+        this.categoryService = categoryService;
+        this.topicService = topicService;
+    }
+
+    private static final Logger logger = LoggerFactory.getLogger(PostServiceImpl.class);
     
     @Value("${file.upload.path}")
     private String uploadPath;
@@ -71,9 +79,26 @@ public class PostServiceImpl implements PostService {
             post.setLikeCount(0);
             post.setCommentCount(0);
             post.setShareCount(0);
+            // 设置悬赏字段默认值
+            post.setBountyAmount(BigDecimal.ZERO);
+            post.setBountyStatus(BountyStatusEnum.CLOSED);
+            post.setEmergencyLevel(0);
+            post.setPostType(PostTypeEnum.NORMAL);
             
             // 创建帖子
             int result = postMapper.insert(post);
+        // 处理话题关联
+        if (post.getTopics() != null && !post.getTopics().isEmpty()) {
+            postMapper.insertPostTopics(post.getPostId(), 
+                post.getTopics().stream().map(Topic::getTopicId).collect(Collectors.toList()));
+        }
+            
+            // 保存关联话题
+            if (!CollectionUtils.isEmpty(post.getTopics())) {
+                topicService.batchLinkPostTopic(post.getPostId(), post.getTopics().stream()
+                    .map(Topic::getTopicId)
+                    .collect(Collectors.toList()));
+            }
             if (result <= 0) {
                 throw new BusinessException("创建帖子失败");
             }
@@ -105,6 +130,12 @@ public class PostServiceImpl implements PostService {
             
             // 更新帖子
             boolean updated = postMapper.updateById(post) > 0;
+        // 更新话题关联
+        postMapper.deletePostTopicsByPostId(post.getPostId());
+        if (post.getTopics() != null && !post.getTopics().isEmpty()) {
+            postMapper.insertPostTopics(post.getPostId(),
+                post.getTopics().stream().map(Topic::getTopicId).collect(Collectors.toList()));
+        };
             if (!updated) {
                 throw new BusinessException("更新帖子失败");
             }
@@ -128,18 +159,23 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public Post getPostById(Long postId) {
-        return postMapper.selectById(postId);
+        Post post = postMapper.selectById(postId);
+        if (post == null) {
+            logger.error("帖子不存在，postId: {}", postId);
+            throw new BusinessException("帖子不存在");
+        }
+        // 获取关联话题
+        List<Topic> topics = topicService.getTopicsByPostId(postId);
+        post.setTopics(new ArrayList<>(topics));
+        
+        // 获取附件
+        List<Attachment> attachments = attachmentService.getAttachmentsByPostId(postId);
+        post.setAttachments(new ArrayList<>(attachments));
+        
+        return post;
     }
 
-    public List<Post> getPostsByCategory(Integer categoryId, int pageNum, int pageSize) {
-        int offset = (pageNum - 1) * pageSize;
-        return postMapper.selectByCategory(categoryId, offset, pageSize);
-    }
-
-    public List<Post> getPostsByUser(Long userId, int pageNum, int pageSize) {
-        int offset = (pageNum - 1) * pageSize;
-        return postMapper.selectByUser(userId, offset, pageSize);
-    }
+    
 
     @Override
     @Transactional
@@ -291,7 +327,6 @@ public class PostServiceImpl implements PostService {
         if (!posts.isEmpty()) {
             result.setNextTimestamp(posts.get(posts.size()-1).getCreatedAt());
         }
-        
         return result;
     }
 
@@ -327,4 +362,4 @@ public class PostServiceImpl implements PostService {
             throw new RuntimeException("瀑布流加载失败: " + e.getMessage());
         }
     }
-} 
+}

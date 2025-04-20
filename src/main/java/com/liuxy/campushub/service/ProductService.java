@@ -67,6 +67,7 @@ public interface ProductService {
      *
      * @param categoryId 分类ID
      * @param keyword 关键词
+     * @param searchType 搜索类型：all-全部，title-标题，description-描述
      * @param minPrice 最低价
      * @param maxPrice 最高价
      * @param status 商品状态
@@ -79,6 +80,7 @@ public interface ProductService {
     ProductListResponse getProductList(
             Integer categoryId,
             String keyword,
+            String searchType,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String status,

@@ -12,7 +12,17 @@
                 AND p.category_id = #{categoryId}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (p.title LIKE CONCAT('%', #{keyword}, '%') OR p.description LIKE CONCAT('%', #{keyword}, '%'))
+                <choose>
+                    <when test="searchType == 'title'">
+                        AND p.title LIKE CONCAT('%', #{keyword}, '%')
+                    </when>
+                    <when test="searchType == 'description'">
+                        AND p.description LIKE CONCAT('%', #{keyword}, '%')
+                    </when>
+                    <otherwise>
+                        AND (p.title LIKE CONCAT('%', #{keyword}, '%') OR p.description LIKE CONCAT('%', #{keyword}, '%'))
+                    </otherwise>
+                </choose>
             </if>
             <if test="minPrice != null">
                 AND (
@@ -79,7 +89,17 @@
                 AND p.category_id = #{categoryId}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (p.title LIKE CONCAT('%', #{keyword}, '%') OR p.description LIKE CONCAT('%', #{keyword}, '%'))
+                <choose>
+                    <when test="searchType == 'title'">
+                        AND p.title LIKE CONCAT('%', #{keyword}, '%')
+                    </when>
+                    <when test="searchType == 'description'">
+                        AND p.description LIKE CONCAT('%', #{keyword}, '%')
+                    </when>
+                    <otherwise>
+                        AND (p.title LIKE CONCAT('%', #{keyword}, '%') OR p.description LIKE CONCAT('%', #{keyword}, '%'))
+                    </otherwise>
+                </choose>
             </if>
             <if test="minPrice != null">
                 AND (

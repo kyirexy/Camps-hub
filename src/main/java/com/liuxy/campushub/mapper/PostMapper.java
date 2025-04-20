@@ -1,5 +1,6 @@
 package com.liuxy.campushub.mapper;
 
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.liuxy.campushub.entity.Post;
 import com.liuxy.campushub.vo.PostVO;
 import org.apache.ibatis.annotations.*;
@@ -17,7 +18,9 @@ import java.util.Map;
  * @since 2024-04-07
  */
 @Mapper
-public interface PostMapper {
+public interface PostMapper extends BaseMapper<Post> {
+    void insertPostTopics(@Param("postId") Long postId, @Param("topicIds") List<Integer> topicIds);
+    void deletePostTopicsByPostId(@Param("postId") Long postId);
     
     @Insert("INSERT INTO post (user_id, category_id, title, content, post_type, bounty_amount, " +
             "bounty_status, emergency_level, status, created_at, updated_at) " +
@@ -138,4 +141,4 @@ public interface PostMapper {
         "LIMIT #{limit}"
     })
     List<PostVO> getPostsWaterfall(@Param("lastTime") Date lastTime, @Param("limit") int limit);
-} 
+}

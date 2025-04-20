@@ -2,6 +2,8 @@ package com.liuxy.campushub.mapper;
 
 import com.liuxy.campushub.entity.StudentUser;
 import org.apache.ibatis.annotations.*;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Mapper
 public interface StudentUserMapper {
@@ -49,6 +51,16 @@ public interface StudentUserMapper {
     @ResultMap("userResultMap")
     StudentUser findByEmail(@Param("email") String email);
 
+    @Select("<script>SELECT * FROM student_user WHERE 1=1" +
+            "<when test='username!=null'> AND username LIKE CONCAT('%',#{username},'%')</when>" +
+            "<when test='status!=null'> AND status = #{status}</when>" +
+            "<when test='realName!=null'> AND real_name LIKE CONCAT('%',#{realName},'%')</when>" +
+            "<when test='studentNumber!=null'> AND student_number LIKE CONCAT('%',#{studentNumber},'%')</when>" +
+            "</script>")
+    @ResultMap("userResultMap")
+    List<StudentUser> selectByCondition(@Param("username") String username, @Param("status") Integer status,
+                                      @Param("realName") String realName, @Param("studentNumber") String studentNumber);
+
     @Select("SELECT * FROM student_user WHERE username = #{loginId} OR student_number = #{loginId} OR phone = #{loginId}")
     @ResultMap("userResultMap")
     StudentUser findByLoginId(@Param("loginId") String loginId);
@@ -61,4 +73,20 @@ public interface StudentUserMapper {
             "password = #{password} " +
             "WHERE user_id = #{userId}")
     int update(StudentUser studentUser);
+
+    @Select("SELECT COUNT(*) FROM student_user")
+    Integer countTotalUsers();
+
+    @Select("SELECT COUNT(*) FROM student_user WHERE register_time >= #{startTime}")
+    Integer countNewUsersAfter(@Param("startTime") LocalDateTime startTime);
+
+    @Select("SELECT COUNT(DISTINCT user_id) FROM student_user WHERE last_login >= #{startTime}")
+    Integer countActiveUsersAfter(@Param("startTime") LocalDateTime startTime);
+
+    @Select("SELECT COUNT(*) FROM student_user WHERE status = #{status}")
+    Integer countUsersByStatus(@Param("status") Integer status);
+    
+    @Select("SELECT * FROM student_user")
+    @ResultMap("userResultMap")
+    List<StudentUser> selectAll();
 }

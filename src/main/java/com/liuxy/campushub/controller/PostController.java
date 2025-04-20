@@ -1,9 +1,8 @@
 package com.liuxy.campushub.controller;
 
-import com.liuxy.campushub.entity.Attachment;
-import com.liuxy.campushub.entity.LostFound;
-import com.liuxy.campushub.entity.Post;
-import com.liuxy.campushub.entity.Topic;
+import com.liuxy.campushub.entity.*;
+import com.liuxy.campushub.enums.BountyStatusEnum;
+import com.liuxy.campushub.enums.PostTypeEnum;
 import com.liuxy.campushub.service.PostService;
 import com.liuxy.campushub.service.TopicService;
 import com.liuxy.campushub.service.AttachmentService;
@@ -16,9 +15,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+
+import java.math.BigDecimal;
+import java.util.*;
 
 /**
  * 帖子控制器
@@ -29,6 +28,15 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {
+
+    private static boolean checkStatusTransition(String newStatus, String currentStatus) {
+        Map<String, List<String>> allowedTransitions = Map.of(
+            "open", List.of("in_progress", "closed"),
+            "in_progress", List.of("closed"),
+            "closed", List.of("reopened")
+        );
+        return allowedTransitions.getOrDefault(currentStatus, Collections.emptyList()).contains(newStatus);
+    }
     
     private static final Logger logger = LoggerFactory.getLogger(PostController.class);
     
@@ -56,13 +64,26 @@ public class PostController {
             logger.info("收到创建帖子请求，请求参数: {}", request);
             
             // 验证必要参数
-            if (!request.containsKey("title") || !request.containsKey("content") || 
-                !request.containsKey("postType") || !request.containsKey("categoryId")) {
-                logger.error("缺少必要参数，当前参数: {}", request.keySet());
-                logger.error("必要参数检查: title={}, content={}, postType={}, categoryId={}", 
-                    request.containsKey("title"), request.containsKey("content"), 
-                    request.containsKey("postType"), request.containsKey("categoryId"));
-                return Result.error("缺少必要参数");
+            if (!request.containsKey("title") || !request.containsKey("content") 
+                    || !request.containsKey("postType") || !request.containsKey("categoryId")) {
+                    logger.error("缺少必要参数，当前参数: {}", request.keySet());
+                    return Result.error("缺少必要参数");
+                }
+            
+            // 悬赏类型额外校验
+            if ("bounty".equals(request.get("postType"))) {
+                if (!request.containsKey("bountyAmount") || !request.containsKey("emergencyLevel")) {
+                    logger.error("悬赏类型缺少必要参数: bountyAmount={}, emergencyLevel={}", 
+                        request.containsKey("bountyAmount"), request.containsKey("emergencyLevel"));
+                    return Result.error("悬赏类型需要填写金额和紧急程度");
+                }
+                
+                try {
+                    new BigDecimal(request.get("bountyAmount").toString());
+                } catch (Exception e) {
+                    logger.error("悬赏金额格式错误: {}", request.get("bountyAmount"));
+                    return Result.error("悬赏金额必须是有效数字");
+                }
             }
             
             // 从安全上下文获取当前用户ID
@@ -85,9 +106,29 @@ public class PostController {
             Post post = new Post();
             post.setTitle((String) request.get("title"));
             post.setContent((String) request.get("content"));
+            
+            // 更新悬赏字段
+            if ("bounty".equals(request.get("postType"))) {
+                post.setBountyAmount(new BigDecimal(request.get("bountyAmount").toString()));
+                post.setEmergencyLevel(Integer.valueOf(request.get("emergencyLevel").toString()));
+                
+                // 状态变更校验
+                if (request.containsKey("bountyStatus")) {
+                    String newStatus = (String) request.get("bountyStatus");
+                    // 创建流程中postId尚未生成，状态校验应在更新方法中进行
+                    post.setBountyStatus(BountyStatusEnum.valueOf(newStatus));
+                }
+            }
             post.setUserId(userId);
-            post.setPostType((String) request.get("postType"));
+            post.setPostType(PostTypeEnum.valueOf((String) request.get("postType")));
             post.setCategoryId(Integer.valueOf(request.get("categoryId").toString()));
+
+            // 设置悬赏相关字段
+            if ("bounty".equals(post.getPostType())) {
+                post.setBountyAmount(new BigDecimal(request.get("bountyAmount").toString()));
+                post.setEmergencyLevel(Integer.valueOf(request.get("emergencyLevel").toString()));
+                post.setBountyStatus(BountyStatusEnum.valueOf("open")); // 默认状态为开放
+            }
             
             logger.info("创建Post对象: {}", post);
             
@@ -153,10 +194,26 @@ public class PostController {
         try {
             logger.info("收到更新帖子请求，postId: {}，请求参数: {}", postId, request);
             
-            // 验证必要参数
+            // 基础参数校验
             if (!request.containsKey("title") || !request.containsKey("content")) {
                 logger.error("缺少必要参数，当前参数: {}", request.keySet());
                 return Result.error("缺少必要参数");
+            }
+            
+            // 悬赏类型校验
+            if ("bounty".equals(request.get("postType"))) {
+                if (!request.containsKey("bountyAmount") || !request.containsKey("emergencyLevel")) {
+                    logger.error("悬赏类型缺少必要参数: bountyAmount={}, emergencyLevel={}", 
+                        request.containsKey("bountyAmount"), request.containsKey("emergencyLevel"));
+                    return Result.error("悬赏类型需要填写金额和紧急程度");
+                }
+                
+                try {
+                    new BigDecimal(request.get("bountyAmount").toString());
+                } catch (Exception e) {
+                    logger.error("悬赏金额格式错误: {}", request.get("bountyAmount"));
+                    return Result.error("悬赏金额必须是有效数字");
+                }
             }
             
             // 从安全上下文获取当前用户ID
@@ -180,6 +237,19 @@ public class PostController {
             post.setPostId(postId);
             post.setTitle((String) request.get("title"));
             post.setContent((String) request.get("content"));
+            
+            // 更新悬赏字段
+            if ("bounty".equals(request.get("postType"))) {
+                post.setBountyAmount(new BigDecimal(request.get("bountyAmount").toString()));
+                post.setEmergencyLevel(Integer.valueOf(request.get("emergencyLevel").toString()));
+                
+                // 状态变更校验
+                if (request.containsKey("bountyStatus")) {
+                    String newStatus = (String) request.get("bountyStatus");
+                    // 创建流程中postId尚未生成，状态校验应在更新方法中进行
+                    post.setBountyStatus(BountyStatusEnum.valueOf(newStatus));
+                }
+            }
             post.setUserId(userId); // 设置用户ID，即使为null也设置，由服务层处理
             
             // 获取base64图片列表
@@ -246,12 +316,12 @@ public class PostController {
                 lostFound = lostFoundService.getLostFoundByPostId(postId);
             }
             
-            Map<String, Object> result = Map.of(
-                "post", post,
-                "topics", topics,
-                "attachments", attachments,
-                "lostFound", lostFound
-            );
+            // 获取帖子详情
+            Map<String, Object> result = new HashMap<>();
+            result.put("post", post);
+            result.put("topics", topics);
+            result.put("attachments", attachments);
+            result.put("lostFound", lostFound);
             
             return Result.success(result);
         } catch (Exception e) {

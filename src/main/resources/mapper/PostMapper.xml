@@ -1,114 +1,172 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.liuxy.campushub.mapper.PostMapper">
-    <!-- ... existing mappings ... -->
-    
-    <select id="selectForScroll" resultType="com.liuxy.campushub.vo.PostVO">
-        SELECT 
-            p.post_id as postId,
-            p.title,
-            c.name as categoryName,
-            p.post_type as postType,
-            p.bounty_amount as bountyAmount,
-            p.emergency_level as emergencyLevel,
-            p.view_count as viewCount,
-            p.like_count as likeCount,
-            p.comment_count as commentCount,
-            p.created_at as createdAt,
-            p.user_id as userId,
-            u.username as username,
-            u.avatar as avatar
+
+    <resultMap id="BaseResultMap" type="com.liuxy.campushub.vo.PostVO">
+        <id column="post_id" property="postId" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="username" property="username"/>
+        <result column="avatar_url" property="avatar"/>
+        <result column="category_name" property="categoryName"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        p.post_id, p.user_id, p.category_id, p.title, p.content, p.status, p.post_type, p.bounty_status,
+        p.view_count, p.like_count, p.comment_count, p.share_count, p.created_at, p.updated_at
+    </sql>
+
+    <insert id="insert" parameterType="com.liuxy.campushub.entity.Post" useGeneratedKeys="true" keyProperty="postId">
+        INSERT INTO post (
+            user_id, category_id, title, content, status, post_type, bounty_status,
+            view_count, like_count, comment_count, share_count,
+            created_at, updated_at
+        )
+        VALUES (
+                   #{userId}, #{categoryId}, #{title}, #{content}, #{status}, #{postType}, #{bountyStatus},
+                   #{viewCount}, #{likeCount}, #{commentCount}, #{shareCount},
+                   NOW(), NOW()
+               )
+    </insert>
+
+    <update id="updateById" parameterType="com.liuxy.campushub.entity.Post">
+        UPDATE post
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="viewCount != null">view_count = #{viewCount},</if>
+            <if test="likeCount != null">like_count = #{likeCount},</if>
+            <if test="commentCount != null">comment_count = #{commentCount},</if>
+            <if test="shareCount != null">share_count = #{shareCount},</if>
+            updated_at = NOW()
+        </set>
+        WHERE post_id = #{postId}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        SELECT <include refid="Base_Column_List"/>,
+        u.username,
+        u.avatar_url,
+        c.category_name
         FROM post p
+
+        LEFT JOIN student_user u ON p.user_id = u.user_id
         LEFT JOIN category c ON p.category_id = c.category_id
-        LEFT JOIN user u ON p.user_id = u.user_id
-        WHERE p.status = 'published'
+        WHERE p.post_id = #{postId} <!-- 明确主键来自 post 表 -->
+    </select>
+
+    <update id="incrementViewCount">
+        UPDATE post SET view_count = view_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <update id="incrementLikeCount">
+        UPDATE post SET like_count = like_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <update id="incrementCommentCount">
+        UPDATE post SET comment_count = comment_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <update id="incrementShareCount">
+        UPDATE post SET share_count = share_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <select id="selectPostsByTime" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+        u.username,
+        u.avatar_url,
+        c.category_name
+        FROM post p
+
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.status = 'published' <!-- 添加表别名 p. -->
         <if test="lastTime != null">
-            AND p.created_at &lt; #{lastTime}
+            AND p.created_at <![CDATA[ < ]]> #{lastTime} <!-- 添加表别名 p. -->
         </if>
-        ORDER BY p.created_at DESC
+        ORDER BY p.created_at DESC <!-- 添加表别名 p. -->
         LIMIT #{pageSize}
     </select>
-    
-    <select id="selectByCategoryForScroll" resultType="com.liuxy.campushub.vo.PostVO">
-        SELECT 
-            p.post_id as postId,
-            p.title,
-            c.name as categoryName,
-            p.post_type as postType,
-            p.bounty_amount as bountyAmount,
-            p.emergency_level as emergencyLevel,
-            p.view_count as viewCount,
-            p.like_count as likeCount,
-            p.comment_count as commentCount,
-            p.created_at as createdAt,
-            p.user_id as userId,
-            u.username as username,
-            u.avatar as avatar
+
+    <select id="selectByCategoryForScroll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+        u.username,
+        u.avatar_url,
+        c.category_name
         FROM post p
+
+        LEFT JOIN student_user u ON p.user_id = u.user_id
         LEFT JOIN category c ON p.category_id = c.category_id
-        LEFT JOIN user u ON p.user_id = u.user_id
-        WHERE p.status = 'published'
-        AND p.category_id = #{categoryId}
+        WHERE p.category_id = #{categoryId} <!-- 添加表别名 p. -->
+        AND p.status = 'published' <!-- 添加表别名 p. -->
         <if test="lastTime != null">
-            AND p.created_at &lt; #{lastTime}
+            AND p.created_at <![CDATA[ < ]]> #{lastTime} <!-- 添加表别名 p. -->
         </if>
-        ORDER BY p.created_at DESC
+        ORDER BY p.created_at DESC <!-- 添加表别名 p. -->
         LIMIT #{pageSize}
     </select>
-    
-    <select id="selectByUserForScroll" resultType="com.liuxy.campushub.vo.PostVO">
-        SELECT 
-            p.post_id as postId,
-            p.title,
-            c.name as categoryName,
-            p.post_type as postType,
-            p.bounty_amount as bountyAmount,
-            p.emergency_level as emergencyLevel,
-            p.view_count as viewCount,
-            p.like_count as likeCount,
-            p.comment_count as commentCount,
-            p.created_at as createdAt,
-            p.user_id as userId,
-            u.username as username,
-            u.avatar as avatar
+
+    <select id="selectByUserForScroll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+        u.username,
+        u.avatar_url,
+        c.category_name
         FROM post p
+
+        LEFT JOIN student_user u ON p.user_id = u.user_id
         LEFT JOIN category c ON p.category_id = c.category_id
-        LEFT JOIN user u ON p.user_id = u.user_id
-        WHERE p.status = 'published'
-        AND p.user_id = #{userId}
+        WHERE p.user_id = #{userId} <!-- 添加表别名 p. -->
+        AND p.status = 'published' <!-- 添加表别名 p. -->
         <if test="lastTime != null">
-            AND p.created_at &lt; #{lastTime}
+            AND p.created_at <![CDATA[ < ]]> #{lastTime} <!-- 添加表别名 p. -->
         </if>
-        ORDER BY p.created_at DESC
+        ORDER BY p.created_at DESC <!-- 添加表别名 p. -->
         LIMIT #{pageSize}
     </select>
-    
-    <!-- 按时间倒序查询帖子列表 -->
-    <select id="selectPostsByTime" resultType="com.liuxy.campushub.vo.PostVO">
-        SELECT 
-            p.post_id as postId,
-            p.title,
-            c.name as categoryName,
-            p.post_type as postType,
-            p.bounty_amount as bountyAmount,
-            p.emergency_level as emergencyLevel,
-            p.view_count as viewCount,
-            p.like_count as likeCount,
-            p.comment_count as commentCount,
-            p.created_at as createdAt,
-            p.user_id as userId,
-            u.username,
-            u.avatar
+
+    <select id="getPostsWaterfall" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+        u.username,
+        u.avatar_url,
+        c.category_name
         FROM post p
+
+        LEFT JOIN student_user u ON p.user_id = u.user_id
         LEFT JOIN category c ON p.category_id = c.category_id
-        LEFT JOIN user u ON p.user_id = u.user_id
-        WHERE p.status = 'published'
+        WHERE p.status = 'published' <!-- 添加表别名 p. -->
         <if test="lastTime != null">
-            AND p.created_at &lt; #{lastTime}
+            AND p.created_at <![CDATA[ < ]]> #{lastTime} <!-- 添加表别名 p. -->
         </if>
-        ORDER BY p.created_at DESC
+        ORDER BY p.created_at DESC <!-- 添加表别名 p. -->
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectForScroll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+        u.username,
+        c.category_name
+        FROM post p
+
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.status = 'published' <!-- 添加表别名 p. -->
+        <if test="lastTime != null">
+            AND p.created_at <![CDATA[ < ]]> #{lastTime} <!-- 添加表别名 p. -->
+        </if>
+        ORDER BY p.created_at DESC <!-- 添加表别名 p. -->
         LIMIT #{pageSize}
     </select>
-    
-    <!-- ... existing mappings ... -->
-</mapper> 
+
+    <insert id="insertPostTopics">
+        INSERT INTO post_topic (post_id, topic_id)
+        VALUES
+        <foreach collection="topicIds" item="topicId" separator=",">
+            (#{postId}, #{topicId})
+        </foreach>
+    </insert>
+
+    <delete id="deletePostTopicsByPostId">
+        DELETE FROM post_topic WHERE post_id = #{postId}
+    </delete>
+
+</mapper>

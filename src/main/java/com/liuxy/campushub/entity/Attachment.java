@@ -1,5 +1,6 @@
 package com.liuxy.campushub.entity;
 
+import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -10,10 +11,14 @@ import java.time.LocalDateTime;
  * @since 2024-04-07
  */
 @Data
+@Entity
+@Table(name = "attachment")
 public class Attachment {
     /**
      * 文件唯一ID
      */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long fileId;
 
     /**
@@ -45,4 +50,4 @@ public class Attachment {
      * 上传时间
      */
     private LocalDateTime uploadTime;
-} 
+}

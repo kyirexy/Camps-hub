@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -194,6 +195,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductListResponse getProductList(
             Integer categoryId,
             String keyword,
+            String searchType,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String status,
@@ -203,17 +205,28 @@ public class ProductServiceImpl implements ProductService {
             Integer pageSize) {
         logger.info("查询商品列表");
         try {
+            // 参数校验和预处理
+            if (keyword != null) {
+                keyword = keyword.trim();
+                if (keyword.isEmpty()) {
+                    keyword = null;
+                }
+            }
+            if (searchType == null || !Arrays.asList("all", "title", "description").contains(searchType)) {
+                searchType = "all";
+            }
+
             // 计算偏移量
             int offset = (pageNum - 1) * pageSize;
 
             // 查询商品列表
             List<Product> products = productMapper.selectProductList(
-                categoryId, keyword, minPrice, maxPrice, status,
+                categoryId, keyword, searchType, minPrice, maxPrice, status,
                 sortField, sortOrder, offset, pageSize);
 
             // 查询总记录数
             Long total = productMapper.countProductList(
-                categoryId, keyword, minPrice, maxPrice, status);
+                categoryId, keyword, searchType, minPrice, maxPrice, status);
 
             // 转换为响应DTO
             List<ProductResponse> productResponses = products.stream()

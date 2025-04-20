@@ -106,41 +106,71 @@
 
 ### 1.3 获取帖子详情
 
-获取指定帖子的详细信息。
-
 #### 请求信息
 
 - 请求方法: `GET`
-- 请求URL: `/posts/{postId}`
+- 请求URL: `/api/posts/{postId}`
 - 请求头:
   ```
   Authorization: Bearer {token}
   ```
 - 路径参数:
-  - `postId`: 帖子ID
+  | 参数名称 | 类型   | 必填 | 说明       |
+  |----------|--------|------|------------|
+  | postId   | Long   | 是   | 帖子唯一标识 |
 
-#### 响应信息
+#### 响应示例
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "post": {
+      "postId": 123,
+      "title": "图书馆失物招领",
+      "content": "在二楼阅览室捡到黑色钱包",
+      "postType": "LOST",
+      "viewCount": 150,
+      "likeCount": 30,
+      "bountyStatus": "OPEN",
+      "bountyAmount": 50.00,
+      "emergencyLevel": 2,
+      "createTime": "2024-04-10 15:30:00"
+    },
+    "topics": [
+      {"topicId": 1, "topicName": "失物招领"}
+    ],
+    "attachments": [
+      {"url": "/attachments/wallet.jpg"}
+    ],
+    "lostFound": {
+      "foundTime": null
+    }
+  }
+}
+```
 
-- 成功响应 (状态码: 200)
-  ```json
-  {
-    "code": 200,
-    "message": "success",
-    "data": {
-      "post": {
-        "postId": 123,
-        "userId": 1001,
-        "title": "帖子标题",
-        "content": "<p>帖子内容</p>",
-        "postType": "normal",
-        "viewCount": 10,
-        "likeCount": 5,
-        "commentCount": 3,
-        "shareCount": 1,
-        "status": "published",
-        "createdAt": "2024-04-10T12:00:00",
-        "updatedAt": "2024-04-10T13:00:00"
-      },
+#### 字段说明
+1. postType枚举值：
+   - `LOST`: 失物招领
+   - "BOUNTY": 悬赏任务
+
+2. bountyStatus状态流转：
+   - `OPEN` → `IN_PROGRESS`（进行中）
+   - `IN_PROGRESS` → `CLOSED`（已关闭）
+   - `CLOSED` → `REOPENED`（重新开启）
+
+3. emergencyLevel紧急程度：
+   - 1: 普通（48小时内处理）
+   - 2: 紧急（24小时内处理）
+   - 3: 特急（6小时内处理）
+
+#### 错误状态码
+| 状态码 | 说明                 |
+|--------|----------------------|
+| 401    | 未授权访问           |
+| 404    | 帖子不存在           |
+| 500    | 服务器内部错误       |
       "topics": [
         {
           "topicId": 789,

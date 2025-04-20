@@ -191,6 +191,7 @@ public class ProductController {
     public ResponseEntity<ProductListResponse> getProductList(
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String searchType, // 搜索类型：all-全部，title-标题，description-描述
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false, defaultValue = "出售中") String status,
@@ -198,11 +199,11 @@ public class ProductController {
             @RequestParam(required = false, defaultValue = "desc") String sortOrder,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        logger.info("获取商品列表，分类：{}，关键词：{}，价格区间：{}-{}，状态：{}，排序：{} {}，页码：{}，每页数量：{}", 
-            categoryId, keyword, minPrice, maxPrice, status, sortField, sortOrder, pageNum, pageSize);
+        logger.info("获取商品列表，分类：{}，关键词：{}，搜索类型：{}，价格区间：{}-{}，状态：{}，排序：{} {}，页码：{}，每页数量：{}", 
+            categoryId, keyword, searchType, minPrice, maxPrice, status, sortField, sortOrder, pageNum, pageSize);
         try {
             ProductListResponse response = productService.getProductList(
-                categoryId, keyword, minPrice, maxPrice, status,
+                categoryId, keyword, searchType, minPrice, maxPrice, status,
                 sortField, sortOrder, pageNum, pageSize);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -210,4 +211,7 @@ public class ProductController {
             throw e;
         }
     }
+
+
+    
 } 

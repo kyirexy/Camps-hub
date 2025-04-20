@@ -1,8 +1,13 @@
 package com.liuxy.campushub.entity;
 
+import com.liuxy.campushub.enums.BountyStatusEnum;
+import com.liuxy.campushub.enums.PostTypeEnum;
+import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 帖子实体类
@@ -12,6 +17,15 @@ import java.time.LocalDateTime;
  */
 @Data
 public class Post {
+
+    public void setTopics(List<Topic> topics) {
+        this.topics = topics;
+    }
+
+    public void setAttachments(List<Attachment> attachments) {
+        this.attachments = attachments;
+    }
+
     /**
      * 帖子唯一ID
      */
@@ -38,29 +52,37 @@ public class Post {
     private String content;
 
     /**
-     * 帖子类型: normal普通/bounty悬赏/lost失物/trade交易
-     */
-    private String postType;
-
-    /**
-     * 悬赏金额
+     * 悬赏金额（当post_type=bounty时有效）
      */
     private BigDecimal bountyAmount;
 
     /**
-     * 悬赏状态: open待接单/processing进行中/completed已完成
+     * 帖子类型: normal普通/bounty悬赏
      */
-    private String bountyStatus;
+    @Enumerated(EnumType.STRING)
+    private PostTypeEnum postType;
 
     /**
-     * 紧急程度（0-5级，0为普通）
+     * 悬赏状态: open待接单/processing进行中/completed已完成
      */
-    private Integer emergencyLevel;
+    @Enumerated(EnumType.STRING)
+    @ManyToMany
+@JoinTable(name = "post_topic",
+    joinColumns = @JoinColumn(name = "post_id"),
+    inverseJoinColumns = @JoinColumn(name = "topic_id"))
+private List<Topic> topics;
+
+private BountyStatusEnum bountyStatus;
 
     /**
      * 地理位置坐标（WGS84标准）
      */
     private String location;
+
+    /**
+     * 紧急程度（0-5级，0为普通）
+     */
+    private Integer emergencyLevel;
 
     /**
      * 浏览数
@@ -96,4 +118,11 @@ public class Post {
      * 最后更新时间
      */
     private LocalDateTime updatedAt;
-} 
+
+    /**
+     * 附件列表
+     */
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Attachment> attachments = new ArrayList<>();
+
+}

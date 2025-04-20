@@ -1,5 +1,6 @@
 package com.liuxy.campushub.entity;
 
+import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -10,10 +11,14 @@ import java.time.LocalDateTime;
  * @since 2024-04-07
  */
 @Data
+@Entity
+@Table(name = "topic")
 public class Topic {
     /**
      * 话题ID
      */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer topicId;
 
     /**
@@ -35,4 +40,4 @@ public class Topic {
      * 创建时间
      */
     private LocalDateTime createdAt;
-} 
+}
