@@ -3,13 +3,17 @@ package com.liuxy.campushub.service.impl;
 import com.liuxy.campushub.entity.*;
 import com.liuxy.campushub.enums.BountyStatusEnum;
 import com.liuxy.campushub.enums.PostTypeEnum;
+import com.liuxy.campushub.entity.PostStatusEnum;
 import com.liuxy.campushub.mapper.PostMapper;
 import com.liuxy.campushub.service.PostService;
 import com.liuxy.campushub.service.AttachmentService;
 import com.liuxy.campushub.service.CategoryService;
 import com.liuxy.campushub.service.TopicService;
+import com.liuxy.campushub.vo.PostDetailVO;
 import com.liuxy.campushub.vo.PostVO;
 import com.liuxy.campushub.vo.ScrollResult;
+import com.liuxy.campushub.vo.HotPostVO;
+import com.liuxy.campushub.model.HotPostModel;
 import com.liuxy.campushub.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,11 +22,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.CollectionUtils;
+import org.springframework.beans.BeanUtils;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 /**
  * 帖子服务实现类
@@ -74,33 +81,34 @@ public class PostServiceImpl implements PostService {
             }
             
             // 设置默认值
-            post.setStatus("published");
+            post.setStatus(PostStatusEnum.PUBLISHED);
             post.setViewCount(0);
             post.setLikeCount(0);
             post.setCommentCount(0);
             post.setShareCount(0);
-            // 设置悬赏字段默认值
-            post.setBountyAmount(BigDecimal.ZERO);
-            post.setBountyStatus(BountyStatusEnum.CLOSED);
-            post.setEmergencyLevel(0);
-            post.setPostType(PostTypeEnum.NORMAL);
+            
+            // 根据帖子类型设置悬赏相关字段
+            if (post.getPostType() == PostTypeEnum.BOUNTY) {
+                post.setBountyAmount(BigDecimal.ZERO);
+                post.setBountyStatus(BountyStatusEnum.OPEN);
+                post.setEmergencyLevel(0);
+            } else {
+                // 普通帖子不需要设置悬赏相关字段
+                post.setBountyAmount(null);
+                post.setBountyStatus(null);
+                post.setEmergencyLevel(null);
+            }
             
             // 创建帖子
             int result = postMapper.insert(post);
-        // 处理话题关联
-        if (post.getTopics() != null && !post.getTopics().isEmpty()) {
-            postMapper.insertPostTopics(post.getPostId(), 
-                post.getTopics().stream().map(Topic::getTopicId).collect(Collectors.toList()));
-        }
-            
-            // 保存关联话题
-            if (!CollectionUtils.isEmpty(post.getTopics())) {
-                topicService.batchLinkPostTopic(post.getPostId(), post.getTopics().stream()
-                    .map(Topic::getTopicId)
-                    .collect(Collectors.toList()));
-            }
             if (result <= 0) {
                 throw new BusinessException("创建帖子失败");
+            }
+            
+            // 处理话题关联
+            if (post.getTopics() != null && !post.getTopics().isEmpty()) {
+                topicService.batchLinkPostTopic(post.getPostId(), 
+                    post.getTopics().stream().map(Topic::getTopicId).collect(Collectors.toList()));
             }
             
             // 处理图片
@@ -158,6 +166,34 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    public PostDetailVO getPostDetail(Long postId) {
+        try {
+            logger.info("开始获取帖子详情，postId: {}", postId);
+            
+            // 获取帖子基本信息
+            Post post = getPostById(postId);
+            if (post == null) {
+                throw new BusinessException(404, "帖子不存在");
+            }
+            
+            // 获取帖子关联的话题
+            List<Topic> topics = topicService.getTopicsByPostId(postId);
+            
+            // 构建并返回详情VO
+            PostDetailVO detailVO = new PostDetailVO(post, topics);
+            
+            logger.info("获取帖子详情成功，postId: {}", postId);
+            return detailVO;
+            
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("获取帖子详情失败", e);
+            throw new BusinessException(500, "获取帖子详情失败: " + e.getMessage());
+        }
+    }
+
+    @Override
     public Post getPostById(Long postId) {
         Post post = postMapper.selectById(postId);
         if (post == null) {
@@ -169,8 +205,8 @@ public class PostServiceImpl implements PostService {
         post.setTopics(new ArrayList<>(topics));
         
         // 获取附件
-        List<Attachment> attachments = attachmentService.getAttachmentsByPostId(postId);
-        post.setAttachments(new ArrayList<>(attachments));
+        /*List<Attachment> attachments = attachmentService.getAttachmentsByPostId(postId);
+        post.setAttachments(new ArrayList<>(attachments));*/
         
         return post;
     }
@@ -182,7 +218,7 @@ public class PostServiceImpl implements PostService {
     public boolean updatePostStatus(Long postId, String status) {
         Post post = new Post();
         post.setPostId(postId);
-        post.setStatus(status);
+        post.setStatus(PostStatusEnum.fromCode(status));
         return postMapper.updateById(post) > 0;
     }
 
@@ -285,9 +321,29 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean deletePost(Long postId) {
-        return postMapper.deleteById(postId) > 0;
+        try {
+            logger.info("开始删除帖子，postId: {}", postId);
+            
+            // 1. 删除帖子关联的话题
+            topicService.unlinkAllPostTopics(postId);
+            logger.info("已删除帖子关联的话题，postId: {}", postId);
+            
+            // 2. 更新帖子状态为已删除
+            Post post = new Post();
+            post.setPostId(postId);
+            post.setStatus(PostStatusEnum.DELETED);
+            post.setUpdatedAt(new Date());
+            
+            int result = postMapper.updateById(post);
+            logger.info("更新帖子状态完成，postId: {}, 影响行数: {}", postId, result);
+            
+            return result > 0;
+        } catch (Exception e) {
+            logger.error("删除帖子失败，postId: {}", postId, e);
+            throw new BusinessException("删除帖子失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -335,31 +391,213 @@ public class PostServiceImpl implements PostService {
         try {
             logger.info("开始瀑布流加载帖子列表，lastTime: {}, limit: {}", lastTime, limit);
             
-            // 多查询一条数据，用于判断是否还有更多
-            List<PostVO> posts = postMapper.getPostsWaterfall(lastTime, limit + 1);
+            // 构建查询参数
+            Map<String, Object> params = new HashMap<>();
+            params.put("status", PostStatusEnum.PUBLISHED.getCode());
+            params.put("limit", limit);
             
-            ScrollResult<PostVO> result = new ScrollResult<>();
-            boolean hasMore = posts.size() > limit;
-            
-            // 如果有更多数据，移除多查询的一条
-            if (hasMore) {
-                posts = posts.subList(0, limit);
+            // 如果有lastTime参数，则添加时间条件
+            if (lastTime != null) {
+                params.put("lastTime", lastTime);
             }
             
-            result.setItems(posts);
-            result.setHasMore(hasMore);
+            // 调用Mapper方法获取帖子列表
+            List<PostVO> posts = postMapper.getPostsWaterfall(params);
+            logger.info("成功加载 {} 条帖子", posts.size());
             
-            // 设置下一次加载的时间戳
+            // 构建返回结果
+            ScrollResult<PostVO> result = new ScrollResult<>();
+            result.setItems(posts);
+            result.setHasMore(!posts.isEmpty());
             if (!posts.isEmpty()) {
                 result.setNextTimestamp(posts.get(posts.size() - 1).getCreatedAt());
             }
-            
-            logger.info("瀑布流加载完成，返回数据条数: {}, 是否有更多: {}", posts.size(), hasMore);
             return result;
-            
         } catch (Exception e) {
             logger.error("瀑布流加载失败", e);
-            throw new RuntimeException("瀑布流加载失败: " + e.getMessage());
+            throw new BusinessException("加载帖子列表失败: " + e.getMessage());
         }
+    }
+
+    @Override
+    public ScrollResult<PostVO> getPostsByUserId(Long userId, int page, int pageSize) {
+        try {
+            logger.info("开始获取用户帖子列表，userId: {}, page: {}, pageSize: {}", userId, page, pageSize);
+            
+            Map<String, Object> params = new HashMap<>();
+            params.put("userId", userId);
+            params.put("offset", (page - 1) * pageSize);
+            params.put("pageSize", pageSize);
+
+            List<PostVO> posts = postMapper.selectByUser(params);
+            return processScrollResult(posts, pageSize);
+        } catch (Exception e) {
+            logger.error("获取用户帖子列表失败", e);
+            throw new BusinessException("获取用户帖子列表失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<HotPostVO> getHotPosts(int limit) {
+        logger.info("获取热点帖子列表，限制条数: {}", limit);
+        
+        // 获取所有已发布的帖子
+        List<Post> posts = postMapper.findAllByStatus(PostStatusEnum.PUBLISHED);
+        if (CollectionUtils.isEmpty(posts)) {
+            logger.info("没有找到已发布的帖子");
+            return Collections.emptyList();
+        }
+        
+        // 计算热度并排序
+        List<Post> sortedPosts = posts.stream()
+                .map(post -> {
+                    double hotness = HotPostModel.calculateHotness(post);
+                    post.setHotness(hotness); // 需要在Post类中添加hotness字段
+                    return post;
+                })
+                .sorted((p1, p2) -> Double.compare(p2.getHotness(), p1.getHotness()))
+                .limit(limit)
+                .collect(Collectors.toList());
+        
+        // 转换为HotPostVO
+        return convertToHotPostVO(sortedPosts);
+    }
+    
+    @Override
+    public ScrollResult<HotPostVO> getHotPostsWithPagination(int page, int pageSize) {
+        logger.info("获取热点帖子分页列表，页码: {}, 每页大小: {}", page, pageSize);
+        
+        // 获取所有已发布的帖子
+        List<Post> posts = postMapper.findAllByStatus(PostStatusEnum.PUBLISHED);
+        if (CollectionUtils.isEmpty(posts)) {
+            logger.info("没有找到已发布的帖子");
+            return new ScrollResult<>();
+        }
+        
+        // 计算热度并排序
+        List<Post> sortedPosts = posts.stream()
+                .map(post -> {
+                    double hotness = HotPostModel.calculateHotness(post);
+                    post.setHotness(hotness);
+                    return post;
+                })
+                .sorted((p1, p2) -> Double.compare(p2.getHotness(), p1.getHotness()))
+                .collect(Collectors.toList());
+        
+        // 分页处理
+        int totalSize = sortedPosts.size();
+        int startIndex = (page - 1) * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, totalSize);
+        
+        if (startIndex >= totalSize) {
+            logger.info("页码超出范围，总记录数: {}, 请求页码: {}", totalSize, page);
+            return new ScrollResult<>();
+        }
+        
+        List<Post> pagePosts = sortedPosts.subList(startIndex, endIndex);
+        
+        // 转换为HotPostVO
+        List<HotPostVO> hotPostVOs = convertToHotPostVO(pagePosts);
+        
+        // 设置排名
+        for (int i = 0; i < hotPostVOs.size(); i++) {
+            hotPostVOs.get(i).setRank(startIndex + i + 1);
+        }
+        
+        // 构建分页结果
+        ScrollResult<HotPostVO> result = new ScrollResult<>();
+        result.setItems(hotPostVOs);
+        result.setHasMore(endIndex < totalSize);
+        
+        // 设置下次请求的时间参数（这里使用当前时间，因为热点排序不依赖时间）
+        result.setNextTimestamp(new Date());
+        
+        return result;
+    }
+    
+    @Override
+    public List<HotPostVO> getBurstHotPosts(int limit) {
+        logger.info("获取突发热点帖子列表，限制条数: {}", limit);
+        
+        // 获取所有已发布的帖子
+        List<Post> posts = postMapper.findAllByStatus(PostStatusEnum.PUBLISHED);
+        if (CollectionUtils.isEmpty(posts)) {
+            logger.info("没有找到已发布的帖子");
+            return Collections.emptyList();
+        }
+        
+        // 筛选突发热点（评论量超过阈值且24小时内发布）
+        LocalDateTime oneDayAgo = LocalDateTime.now().minusDays(1);
+        List<Post> burstPosts = posts.stream()
+                .filter(post -> post.getCommentCount() > 100 && 
+                        post.getCreatedAt().isAfter(oneDayAgo))
+                .map(post -> {
+                    double hotness = HotPostModel.calculateHotness(post);
+                    post.setHotness(hotness);
+                    return post;
+                })
+                .sorted((p1, p2) -> Double.compare(p2.getHotness(), p1.getHotness()))
+                .limit(limit)
+                .collect(Collectors.toList());
+        
+        // 转换为HotPostVO
+        List<HotPostVO> hotPostVOs = convertToHotPostVO(burstPosts);
+        
+        // 设置排名和突发热点标记
+        for (int i = 0; i < hotPostVOs.size(); i++) {
+            hotPostVOs.get(i).setRank(i + 1);
+            hotPostVOs.get(i).setBurst(true);
+        }
+        
+        return hotPostVOs;
+    }
+    
+    /**
+     * 将Post实体转换为HotPostVO
+     * 
+     * @param posts 帖子列表
+     * @return 热点帖子VO列表
+     */
+    private List<HotPostVO> convertToHotPostVO(List<Post> posts) {
+        if (CollectionUtils.isEmpty(posts)) {
+            return Collections.emptyList();
+        }
+        
+        // 获取所有帖子ID
+        List<Long> postIds = posts.stream()
+                .map(Post::getPostId)
+                .collect(Collectors.toList());
+        
+        // 批量获取帖子VO
+        List<PostVO> postVOs = postMapper.findPostVOsByIds(postIds);
+        
+        // 转换为HotPostVO
+        return postVOs.stream()
+                .map(postVO -> {
+                    HotPostVO hotPostVO = new HotPostVO();
+                    // 复制PostVO属性
+                    BeanUtils.copyProperties(postVO, hotPostVO);
+                    
+                    // 查找对应的Post实体
+                    Post post = posts.stream()
+                            .filter(p -> p.getPostId().equals(postVO.getPostId()))
+                            .findFirst()
+                            .orElse(null);
+                    
+                    if (post != null) {
+                        // 设置热度值
+                        hotPostVO.setHotness(post.getHotness());
+                        
+                        // 判断是否为新发布（24小时内）
+                        LocalDateTime oneDayAgo = LocalDateTime.now().minusDays(1);
+                        hotPostVO.setNew(post.getCreatedAt().isAfter(oneDayAgo));
+                        
+                        // 判断是否为突发热点
+                        hotPostVO.setBurst(post.getCommentCount() > 100);
+                    }
+                    
+                    return hotPostVO;
+                })
+                .collect(Collectors.toList());
     }
 }

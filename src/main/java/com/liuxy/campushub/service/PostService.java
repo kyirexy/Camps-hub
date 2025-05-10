@@ -3,6 +3,8 @@ package com.liuxy.campushub.service;
 import com.liuxy.campushub.entity.Post;
 import com.liuxy.campushub.vo.PostVO;
 import com.liuxy.campushub.vo.ScrollResult;
+import com.liuxy.campushub.vo.PostDetailVO;
+import com.liuxy.campushub.vo.HotPostVO;
 import java.util.Date;
 import java.util.List;
 
@@ -126,4 +128,47 @@ public interface PostService {
      * @return 滚动分页结果
      */
     ScrollResult<PostVO> getPostsWaterfall(Date lastTime, int limit);
+    
+    /**
+     * 获取帖子详情
+     *
+     * @param postId 帖子ID
+     * @return 帖子详情VO对象
+     */
+    PostDetailVO getPostDetail(Long postId);
+
+    /**
+     * 根据用户ID分页查询帖子列表
+     *
+     * @param userId 用户ID
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @return 滚动分页结果
+     */
+    ScrollResult<PostVO> getPostsByUserId(Long userId, int page, int pageSize);
+
+    /**
+     * 获取热点帖子列表
+     *
+     * @param limit 获取条数，默认10条
+     * @return 热点帖子列表
+     */
+    List<HotPostVO> getHotPosts(int limit);
+    
+    /**
+     * 获取热点帖子列表（带分页）
+     *
+     * @param page 页码，从1开始
+     * @param pageSize 每页大小
+     * @return 热点帖子分页结果
+     */
+    ScrollResult<HotPostVO> getHotPostsWithPagination(int page, int pageSize);
+    
+    /**
+     * 获取突发热点帖子列表
+     *
+     * @param limit 获取条数，默认5条
+     * @return 突发热点帖子列表
+     */
+    List<HotPostVO> getBurstHotPosts(int limit);
 } 

@@ -1,7 +1,9 @@
 package com.liuxy.campushub.vo;
 
+import com.liuxy.campushub.enums.PostTypeEnum;
 import lombok.Data;
 import java.util.Date;
+import java.math.BigDecimal;
 
 /**
  * 帖子展示视图对象
@@ -9,18 +11,19 @@ import java.util.Date;
 @Data
 public class PostVO {
     private Long postId;
+    private Long userId;
     private String title;
+    private String content;
     private String categoryName;
-    private String postType;
-    private Double bountyAmount;
-    private String emergencyLevel;
+    private PostTypeEnum postType;
+    private BigDecimal bountyAmount;
+    private Integer emergencyLevel;
     private Integer viewCount;
     private Integer likeCount;
     private Integer commentCount;
     private Date createdAt;
     
     // 用户相关信息
-    private Long userId;
     private String username;
     private String avatar;
 } 

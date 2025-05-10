@@ -112,4 +112,12 @@ public interface TopicService {
      * @return 话题实体
      */
     Topic getOrCreateTopic(String topicName, Long creatorId);
+    
+    /**
+     * 解除帖子与所有话题的关联
+     *
+     * @param postId 帖子ID
+     * @return 是否成功
+     */
+    boolean unlinkAllPostTopics(Long postId);
 } 

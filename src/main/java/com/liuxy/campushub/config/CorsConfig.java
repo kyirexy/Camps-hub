@@ -19,6 +19,9 @@ public class CorsConfig {
         // 允许的域名
         config.addAllowedOrigin("http://localhost:5173");
         config.addAllowedOrigin("http://localhost:5174");
+        config.addAllowedOrigin("http://10.51.62.230:8081");
+        // 允许所有来源（开发环境使用）
+        config.addAllowedOriginPattern("*");
         // 允许的头信息
         config.addAllowedHeader("*");
         // 允许的请求方式
@@ -29,4 +32,4 @@ public class CorsConfig {
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
     }
-} 
+}

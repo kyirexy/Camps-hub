@@ -1,58 +1,70 @@
 package com.liuxy.campushub.entity;
 
+import com.liuxy.campushub.enums.CommentStatusEnum;
+import jakarta.persistence.*;
 import lombok.Data;
-import java.time.LocalDateTime;
+import lombok.NoArgsConstructor;
+
+import java.util.Date;
 
 /**
  * 评论实体类
  *
  * @author liuxy
- * @since 2024-04-07
+ * @since 2024-04-21
  */
 @Data
+@NoArgsConstructor
+@Entity
+@Table(name = "comment")
 public class Comment {
-    /**
-     * 评论ID
-     */
-    private Integer commentId;
 
-    /**
-     * 帖子ID
-     */
-    private Integer postId;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "comment_id")
+    private Long commentId;
 
-    /**
-     * 评论者ID
-     */
+    @Column(name = "post_id", nullable = false)
+    private Long postId;
+
+    @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    /**
-     * 父评论ID（用于回复功能）
-     */
-    private Integer parentId;
+    @Column(name = "parent_id")
+    private Long parentId = 0L; // 默认值为0，表示顶级评论
 
-    /**
-     * 评论内容
-     */
+    @Column(nullable = false, length = 500)
     private String content;
 
-    /**
-     * 点赞数
-     */
-    private Integer likeCount;
+    @Column(name = "like_count")
+    private Integer likeCount = 0;
 
-    /**
-     * 状态（0-待审核，1-已通过，2-已拒绝）
-     */
-    private Integer status;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    private CommentStatusEnum status = CommentStatusEnum.NORMAL;
 
-    /**
-     * 创建时间
-     */
-    private LocalDateTime createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Date createdAt = new Date();
 
-    /**
-     * 更新时间
-     */
-    private LocalDateTime updatedAt;
+    // 非数据库字段，用于关联查询
+    @Transient
+    private String username;
+
+    @Transient
+    private String avatar;
+
+    // 构造函数
+    public Comment(Long postId, Long userId, String content) {
+        this.postId = postId;
+        this.userId = userId;
+        this.content = content;
+    }
+
+    // 带父评论ID的构造函数
+    public Comment(Long postId, Long userId, Long parentId, String content) {
+        this.postId = postId;
+        this.userId = userId;
+        this.parentId = parentId;
+        this.content = content;
+    }
 } 

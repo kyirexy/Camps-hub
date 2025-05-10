@@ -2,6 +2,7 @@ package com.liuxy.campushub.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.liuxy.campushub.entity.Post;
+import com.liuxy.campushub.entity.PostStatusEnum;
 import com.liuxy.campushub.vo.PostVO;
 import org.apache.ibatis.annotations.*;
 import org.slf4j.Logger;
@@ -124,21 +125,48 @@ public interface PostMapper extends BaseMapper<Post> {
      * 瀑布流加载帖子列表
      * 按时间倒序查询，支持时间戳分页
      *
-     * @param lastTime 最后一条记录的时间戳
-     * @param limit 获取条数
+     * @param params 查询参数，包含 status、limit 和可选的 lastTime
      * @return 帖子列表
      */
-    @Select({
-        "SELECT p.post_id, p.title, p.content, p.post_type, p.created_at,",
-        "p.view_count, p.like_count, p.comment_count,",
-        "c.category_name as category_name, u.username, u.avatar_url as avatar",
-        "FROM post p",
-        "LEFT JOIN category c ON p.category_id = c.category_id",
-        "LEFT JOIN student_user u ON p.user_id = u.user_id",
-        "WHERE p.status = 'published'",
-        "AND (#{lastTime} IS NULL OR p.created_at < #{lastTime})",
-        "ORDER BY p.created_at DESC",
-        "LIMIT #{limit}"
-    })
-    List<PostVO> getPostsWaterfall(@Param("lastTime") Date lastTime, @Param("limit") int limit);
+    List<PostVO> getPostsWaterfall(Map<String, Object> params);
+
+    /**
+     * 根据用户ID分页查询帖子列表
+     *
+     * @param params 查询参数，包含userId、offset和pageSize
+     * @return 帖子列表
+     */
+    List<PostVO> selectByUser(Map<String, Object> params);
+
+    /**
+     * 根据状态查询所有帖子
+     *
+     * @param status 帖子状态
+     * @return 帖子列表
+     */
+    @Select("SELECT * FROM post WHERE status = #{status}")
+    List<Post> findAllByStatus(PostStatusEnum status);
+    
+    /**
+     * 根据ID列表批量查询帖子VO
+     *
+     * @param postIds 帖子ID列表
+     * @return 帖子VO列表
+     */
+    @Select("<script>" +
+            "SELECT p.*, c.name as category_name, u.username, u.avatar " +
+            "FROM post p " +
+            "LEFT JOIN category c ON p.category_id = c.category_id " +
+            "LEFT JOIN student_user u ON p.user_id = u.user_id " +
+            "WHERE p.post_id IN " +
+            "<foreach collection='postIds' item='postId' open='(' separator=',' close=')'>" +
+            "#{postId}" +
+            "</foreach>" +
+            " ORDER BY FIELD(p.post_id, " +
+            "<foreach collection='postIds' item='postId' separator=','>" +
+            "#{postId}" +
+            "</foreach>" +
+            ")" +
+            "</script>")
+    List<PostVO> findPostVOsByIds(@Param("postIds") List<Long> postIds);
 }

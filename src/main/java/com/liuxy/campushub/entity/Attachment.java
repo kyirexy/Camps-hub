@@ -24,7 +24,9 @@ public class Attachment {
     /**
      * 关联帖子ID
      */
-    private Long postId;
+    @ManyToOne
+    @JoinColumn(name = "post_id")
+    private Post post;
 
     /**
      * 文件类型: image图片/pdf文档/ppt幻灯片/video视频
@@ -50,4 +52,8 @@ public class Attachment {
      * 上传时间
      */
     private LocalDateTime uploadTime;
+
+    public void setPostId(Long postId) {
+        //return this.post.getPostId();
+    }
 }

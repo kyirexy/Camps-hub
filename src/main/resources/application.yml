@@ -36,4 +36,10 @@ spark:
   top-n: 5
   retrieval-filter-policy: REGULAR
   temperature: 0.5
-  qa-mode: MIX 
+  qa-mode: MIX
+
+mybatis:
+  type-handlers-package: com.liuxy.campushub.handler
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl 

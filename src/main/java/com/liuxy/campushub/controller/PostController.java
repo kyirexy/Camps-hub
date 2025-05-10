@@ -3,13 +3,16 @@ package com.liuxy.campushub.controller;
 import com.liuxy.campushub.entity.*;
 import com.liuxy.campushub.enums.BountyStatusEnum;
 import com.liuxy.campushub.enums.PostTypeEnum;
+import com.liuxy.campushub.exception.BusinessException;
 import com.liuxy.campushub.service.PostService;
 import com.liuxy.campushub.service.TopicService;
 import com.liuxy.campushub.service.AttachmentService;
 import com.liuxy.campushub.service.LostFoundService;
 import com.liuxy.campushub.common.Result;
+import com.liuxy.campushub.vo.PostDetailVO;
 import com.liuxy.campushub.vo.PostVO;
 import com.liuxy.campushub.vo.ScrollResult;
+import com.liuxy.campushub.vo.HotPostVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +21,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+
+import static com.liuxy.campushub.utils.SecurityUtil.getCurrentUserId;
 
 /**
  * 帖子控制器
@@ -55,130 +61,54 @@ public class PostController {
     /**
      * 创建新帖子
      *
-     * @param request 请求体，包含帖子信息和base64图片列表
+     * @param params 请求体，包含帖子信息和base64图片列表
      * @return 创建结果
      */
     @PostMapping
-    public Result<Long> createPost(@RequestBody Map<String, Object> request) {
+    public Result createPost(@RequestBody Map<String, Object> params) {
         try {
-            logger.info("收到创建帖子请求，请求参数: {}", request);
+            logger.info("收到创建帖子请求，请求参数: {}", params);
             
-            // 验证必要参数
-            if (!request.containsKey("title") || !request.containsKey("content") 
-                    || !request.containsKey("postType") || !request.containsKey("categoryId")) {
-                    logger.error("缺少必要参数，当前参数: {}", request.keySet());
-                    return Result.error("缺少必要参数");
-                }
+            // 获取当前用户ID
+            Long userId = getCurrentUserId();
+            logger.info("从安全上下文获取到当前用户ID: {}", userId);
             
-            // 悬赏类型额外校验
-            if ("bounty".equals(request.get("postType"))) {
-                if (!request.containsKey("bountyAmount") || !request.containsKey("emergencyLevel")) {
-                    logger.error("悬赏类型缺少必要参数: bountyAmount={}, emergencyLevel={}", 
-                        request.containsKey("bountyAmount"), request.containsKey("emergencyLevel"));
-                    return Result.error("悬赏类型需要填写金额和紧急程度");
-                }
-                
-                try {
-                    new BigDecimal(request.get("bountyAmount").toString());
-                } catch (Exception e) {
-                    logger.error("悬赏金额格式错误: {}", request.get("bountyAmount"));
-                    return Result.error("悬赏金额必须是有效数字");
-                }
-            }
-            
-            // 从安全上下文获取当前用户ID
-            Long userId;
-            try {
-                userId = com.liuxy.campushub.utils.SecurityUtil.getCurrentUserId();
-                logger.info("从安全上下文获取到当前用户ID: {}", userId);
-            } catch (Exception e) {
-                logger.error("获取当前用户ID失败，尝试从请求中获取", e);
-                // 如果从安全上下文获取失败，尝试从请求中获取
-                if (request.containsKey("userId")) {
-                    userId = Long.valueOf(request.get("userId").toString());
-                    logger.info("从请求中获取到用户ID: {}", userId);
-                } else {
-                    logger.error("无法获取用户ID，请求中也不包含userId参数");
-                    return Result.error("无法获取用户ID");
-                }
-            }
-            
+            // 构建帖子对象
             Post post = new Post();
-            post.setTitle((String) request.get("title"));
-            post.setContent((String) request.get("content"));
-            
-            // 更新悬赏字段
-            if ("bounty".equals(request.get("postType"))) {
-                post.setBountyAmount(new BigDecimal(request.get("bountyAmount").toString()));
-                post.setEmergencyLevel(Integer.valueOf(request.get("emergencyLevel").toString()));
-                
-                // 状态变更校验
-                if (request.containsKey("bountyStatus")) {
-                    String newStatus = (String) request.get("bountyStatus");
-                    // 创建流程中postId尚未生成，状态校验应在更新方法中进行
-                    post.setBountyStatus(BountyStatusEnum.valueOf(newStatus));
-                }
-            }
             post.setUserId(userId);
-            post.setPostType(PostTypeEnum.valueOf((String) request.get("postType")));
-            post.setCategoryId(Integer.valueOf(request.get("categoryId").toString()));
-
-            // 设置悬赏相关字段
-            if ("bounty".equals(post.getPostType())) {
-                post.setBountyAmount(new BigDecimal(request.get("bountyAmount").toString()));
-                post.setEmergencyLevel(Integer.valueOf(request.get("emergencyLevel").toString()));
-                post.setBountyStatus(BountyStatusEnum.valueOf("open")); // 默认状态为开放
-            }
+            post.setTitle((String) params.get("title"));
+            post.setContent((String) params.get("content"));
+            post.setCategoryId(Integer.valueOf(params.get("categoryId").toString()));
             
-            logger.info("创建Post对象: {}", post);
-            
-            // 获取base64图片列表
-            @SuppressWarnings("unchecked")
-            List<String> base64Images = (List<String>) request.get("images");
-            
-            // 创建帖子
-            Long postId = postService.createPost(post, base64Images);
-            if (postId == null) {
-                logger.error("创建帖子失败，返回的postId为null");
-                return Result.error("创建帖子失败");
-            }
-            
-            logger.info("帖子创建成功，postId: {}", postId);
+            // 处理帖子类型，转换为大写
+            String postTypeStr = ((String) params.get("postType")).toUpperCase();
+            post.setPostType(PostTypeEnum.valueOf(postTypeStr));
             
             // 处理话题
             @SuppressWarnings("unchecked")
-            List<String> topicNames = (List<String>) request.get("topicNames");
+            List<String> topicNames = (List<String>) params.get("topicNames");
             if (topicNames != null && !topicNames.isEmpty()) {
-                logger.info("处理帖子话题，topicNames: {}", topicNames);
+                List<Topic> topics = new ArrayList<>();
                 for (String topicName : topicNames) {
-                    topicService.getOrCreateTopic(topicName, post.getUserId());
+                    Topic topic = topicService.getOrCreateTopic(topicName, userId);
+                    topics.add(topic);
                 }
-                List<Integer> topicIds = topicNames.stream()
-                    .map(name -> topicService.getTopicByName(name).getTopicId())
-                    .toList();
-                topicService.batchLinkPostTopic(postId, topicIds);
+                post.setTopics(topics);
             }
             
-            // 如果是失物招领类型，创建失物招领记录
-            if ("lost".equals(post.getPostType())) {
-                logger.info("创建失物招领记录，postId: {}", postId);
-                LostFound lostFound = new LostFound();
-                lostFound.setPostId(postId);
-                lostFound.setFoundTime(null);
-                lostFoundService.createLostFound(lostFound);
-            }
+            // 处理图片
+            @SuppressWarnings("unchecked")
+            List<String> images = (List<String>) params.get("images");
+            
+            // 创建帖子
+            Long postId = postService.createPost(post, images);
             
             return Result.success(postId);
         } catch (Exception e) {
             logger.error("创建帖子失败，详细错误信息: ", e);
-            logger.error("请求参数: {}", request);
-            // 获取完整的堆栈跟踪信息
-            StringBuilder stackTrace = new StringBuilder();
-            for (StackTraceElement element : e.getStackTrace()) {
-                stackTrace.append("\n    at ").append(element.toString());
-            }
-            logger.error("异常堆栈: {}", stackTrace.toString());
-            return Result.error("创建帖子失败: " + e.getMessage());
+            logger.error("请求参数: {}", params);
+            logger.error("异常堆栈: ", e);
+            return Result.error(500, "创建帖子失败: " + e.getMessage());
         }
     }
     
@@ -219,7 +149,7 @@ public class PostController {
             // 从安全上下文获取当前用户ID
             Long userId;
             try {
-                userId = com.liuxy.campushub.utils.SecurityUtil.getCurrentUserId();
+                userId = getCurrentUserId();
                 logger.info("从安全上下文获取到当前用户ID: {}", userId);
             } catch (Exception e) {
                 logger.error("获取当前用户ID失败，尝试从请求中获取", e);
@@ -288,44 +218,55 @@ public class PostController {
     }
     
     /**
-     * 获取帖子详情
+     * 获取帖子详情（重构版）
      *
-     * @param postId 帖子ID
-     * @return 帖子详情
+     * @param postId 帖子ID 格式要求：大于0的正整数
+     * @return 帖子详情响应实体，包含基础信息、话题及扩展字段
      */
     @GetMapping("/{postId}")
-    public Result<Map<String, Object>> getPostDetail(@PathVariable Long postId) {
+    public Result<PostDetailVO> getPostDetail(@PathVariable Long postId) {
+        final String METHOD_NAME = "getPostDetail";
+        logger.debug("{} 方法调用 - 请求参数: postId={}", METHOD_NAME, postId);
+
         try {
+            // 参数预校验
+            if (postId == null || postId <= 0) {
+                logger.warn("{} 参数校验失败 - 无效的帖子ID: {}", METHOD_NAME, postId);
+                return Result.error(400, "帖子ID格式错误");
+            }
+
+            // 核心业务逻辑
             Post post = postService.getPostById(postId);
             if (post == null) {
-                return Result.error("帖子不存在");
+                logger.info("{} 数据不存在 - postId: {}", METHOD_NAME, postId);
+                return Result.error(404, "指定帖子不存在");
             }
-            
-            // 增加浏览量
-            postService.incrementViewCount(postId);
-            
-            // 获取帖子关联的话题
+
+            // 异步更新计数
+            CompletableFuture.runAsync(() -> {
+                try {
+                    postService.incrementViewCount(postId);
+                    logger.debug("{} 浏览量更新成功 - postId: {}", METHOD_NAME, postId);
+                } catch (Exception e) {
+                    logger.error("{} 浏览量更新异常 - postId: {} | 错误: {}", METHOD_NAME, postId, e.getMessage());
+                }
+            });
+
+            // 构建响应数据
             List<Topic> topics = topicService.getTopicsByPostId(postId);
-            
-            // 获取帖子附件
-            List<Attachment> attachments = attachmentService.getAttachmentsByPostId(postId);
-            
-            // 如果是失物招领类型，获取失物招领信息
-            LostFound lostFound = null;
-            if ("lost".equals(post.getPostType())) {
-                lostFound = lostFoundService.getLostFoundByPostId(postId);
-            }
-            
-            // 获取帖子详情
-            Map<String, Object> result = new HashMap<>();
-            result.put("post", post);
-            result.put("topics", topics);
-            result.put("attachments", attachments);
-            result.put("lostFound", lostFound);
-            
-            return Result.success(result);
+            PostDetailVO postDetail = new PostDetailVO(post, topics);
+
+            logger.debug("{} 执行成功 - 响应数据: {}", METHOD_NAME, postDetail);
+            return Result.success(postDetail);
+        } catch (BusinessException be) {
+            logger.error("{} 业务异常 - postId: {} | 错误码: {} | 原因: {}", 
+                METHOD_NAME, postId, be.getErrorCode(), be.getMessage());
+            return Result.error(be.getErrorCode(), be.getMessage());
         } catch (Exception e) {
-            return Result.error("获取帖子详情失败: " + e.getMessage());
+            logger.error("{} 系统异常 - postId: {}", METHOD_NAME, postId, e);
+            return Result.error(500, "服务暂时不可用，请稍后重试");
+        } finally {
+            logger.debug("{} 方法结束 - postId: {}", METHOD_NAME, postId);
         }
     }
     
@@ -387,10 +328,39 @@ public class PostController {
     @DeleteMapping("/{postId}")
     public Result<Boolean> deletePost(@PathVariable Long postId) {
         try {
+            logger.info("收到删除帖子请求，postId: {}", postId);
+            
+            // 从安全上下文获取当前用户ID
+            Long currentUserId = getCurrentUserId();
+            logger.info("从安全上下文获取到当前用户ID: {}", currentUserId);
+            
+            // 获取帖子信息
+            Post post = postService.getPostById(postId);
+            if (post == null) {
+                logger.error("要删除的帖子不存在，postId: {}", postId);
+                return Result.error("帖子不存在");
+            }
+            
+            // 权限验证：只能删除自己的帖子
+            if (!post.getUserId().equals(currentUserId)) {
+                logger.error("用户无权删除此帖子，currentUserId: {}, postUserId: {}", currentUserId, post.getUserId());
+                return Result.error("无权删除此帖子");
+            }
+            
+            // 执行删除操作
             boolean success = postService.deletePost(postId);
-            return Result.success(success);
+            if (success) {
+                logger.info("帖子删除成功，postId: {}", postId);
+                return Result.success(true);
+            } else {
+                logger.error("帖子删除失败，postId: {}", postId);
+                return Result.error("删除帖子失败");
+            }
+        } catch (BusinessException e) {
+            logger.error("删除帖子业务异常，postId: {}", postId, e);
+            return Result.error(e.getMessage());
         } catch (Exception e) {
-            logger.error("删除帖子失败", e);
+            logger.error("删除帖子系统异常，postId: {}", postId, e);
             return Result.error("删除帖子失败: " + e.getMessage());
         }
     }
@@ -402,7 +372,7 @@ public class PostController {
      * @param pageSize 每页数量，默认10
      * @return 帖子列表
      */
-    @GetMapping
+    @GetMapping("/list")
     public Result<ScrollResult<PostVO>> getPostList(
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date lastTime,
             @RequestParam(defaultValue = "10") int pageSize) {
@@ -424,7 +394,7 @@ public class PostController {
      */
     @GetMapping("/waterfall")
     public Result<ScrollResult<PostVO>> getPostsWaterfall(
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date lastTime,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Date lastTime,
             @RequestParam(defaultValue = "10") int limit) {
         try {
             ScrollResult<PostVO> result = postService.getPostsWaterfall(lastTime, limit);
@@ -432,6 +402,105 @@ public class PostController {
         } catch (Exception e) {
             logger.error("瀑布流加载失败", e);
             return Result.error("瀑布流加载失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 根路径处理，重定向到列表接口
+     *
+     * @return 重定向到列表接口
+     */
+    @GetMapping(value = {"/", ""})
+    public Result<ScrollResult<PostVO>> getRoot() {
+        logger.debug("访问根路径 /api/posts/，重定向到列表接口");
+        try {
+            return getPostList(null, 10);
+        } catch (Exception e) {
+            logger.error("根路径处理失败", e);
+            return Result.error("获取帖子列表失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取当前用户发布的帖子列表
+     *
+     * @param page 页码，默认1
+     * @param pageSize 每页大小，默认10
+     * @return 帖子列表
+     */
+    @GetMapping("/my")
+    public Result<ScrollResult<PostVO>> getMyPosts(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        try {
+            logger.info("获取当前用户发布的帖子列表，page: {}, pageSize: {}", page, pageSize);
+            
+            // 从安全上下文获取当前用户ID
+            Long userId = getCurrentUserId();
+            logger.info("从安全上下文获取到当前用户ID: {}", userId);
+            
+            ScrollResult<PostVO> result = postService.getPostsByUserId(userId, page, pageSize);
+            return Result.success(result);
+        } catch (Exception e) {
+            logger.error("获取当前用户帖子列表失败", e);
+            return Result.error("获取帖子列表失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取热点帖子列表
+     *
+     * @param limit 获取条数，默认10条
+     * @return 热点帖子列表
+     */
+    @GetMapping("/hot")
+    public Result<List<HotPostVO>> getHotPosts(@RequestParam(defaultValue = "10") int limit) {
+        try {
+            logger.info("获取热点帖子列表，限制条数: {}", limit);
+            List<HotPostVO> hotPosts = postService.getHotPosts(limit);
+            return Result.success(hotPosts);
+        } catch (Exception e) {
+            logger.error("获取热点帖子列表失败", e);
+            return Result.error("获取热点帖子列表失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取热点帖子列表（带分页）
+     *
+     * @param page 页码，从1开始
+     * @param pageSize 每页大小，默认10
+     * @return 热点帖子分页结果
+     */
+    @GetMapping("/hot/page")
+    public Result<ScrollResult<HotPostVO>> getHotPostsWithPagination(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        try {
+            logger.info("获取热点帖子分页列表，页码: {}, 每页大小: {}", page, pageSize);
+            ScrollResult<HotPostVO> result = postService.getHotPostsWithPagination(page, pageSize);
+            return Result.success(result);
+        } catch (Exception e) {
+            logger.error("获取热点帖子分页列表失败", e);
+            return Result.error("获取热点帖子分页列表失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取突发热点帖子列表
+     *
+     * @param limit 获取条数，默认5条
+     * @return 突发热点帖子列表
+     */
+    @GetMapping("/hot/burst")
+    public Result<List<HotPostVO>> getBurstHotPosts(@RequestParam(defaultValue = "5") int limit) {
+        try {
+            logger.info("获取突发热点帖子列表，限制条数: {}", limit);
+            List<HotPostVO> burstHotPosts = postService.getBurstHotPosts(limit);
+            return Result.success(burstHotPosts);
+        } catch (Exception e) {
+            logger.error("获取突发热点帖子列表失败", e);
+            return Result.error("获取突发热点帖子列表失败: " + e.getMessage());
         }
     }
 }

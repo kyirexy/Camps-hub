@@ -48,7 +48,11 @@ public class SecurityConfig {
                 auth.requestMatchers(
                         "/api/auth/**",
                         "/api/v1/student/login",
-                        "/api/v1/student/register"
+                        "/api/v1/student/register",
+                        "/api/weather/**",
+                        "/api/posts/hot/**",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**"
                     ).permitAll()
                     .anyRequest().authenticated();
             })

@@ -6,6 +6,9 @@ import com.liuxy.campushub.service.TopicService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.liuxy.campushub.exception.BusinessException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +23,8 @@ import java.util.regex.Pattern;
  */
 @Service
 public class TopicServiceImpl implements TopicService {
+
+    private static final Logger logger = LoggerFactory.getLogger(TopicServiceImpl.class);
 
     @Autowired
     private TopicMapper topicMapper;
@@ -73,7 +78,7 @@ public class TopicServiceImpl implements TopicService {
     @Override
     @Transactional
     public boolean unlinkPostTopic(Long postId, Integer topicId) {
-        return topicMapper.deletePostTopic(postId, topicId) > 0;
+        return topicMapper.unlinkPostTopic(postId, topicId) > 0;
     }
 
     @Override
@@ -115,5 +120,31 @@ public class TopicServiceImpl implements TopicService {
             createTopic(topic);
         }
         return topic;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean unlinkAllPostTopics(Long postId) {
+        try {
+            logger.info("开始解除帖子与所有话题的关联，postId: {}", postId);
+            
+            // 获取帖子关联的所有话题ID
+            List<Integer> topicIds = topicMapper.getTopicIdsByPostId(postId);
+            if (topicIds.isEmpty()) {
+                logger.info("帖子没有关联任何话题，postId: {}", postId);
+                return true;
+            }
+            
+            // 批量解除关联
+            for (Integer topicId : topicIds) {
+                topicMapper.unlinkPostTopic(postId, topicId);
+            }
+            
+            logger.info("成功解除帖子与所有话题的关联，postId: {}, 解除关联的话题数: {}", postId, topicIds.size());
+            return true;
+        } catch (Exception e) {
+            logger.error("解除帖子与所有话题关联失败，postId: {}", postId, e);
+            throw new BusinessException("解除帖子与所有话题关联失败: " + e.getMessage());
+        }
     }
 } 

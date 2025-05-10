@@ -93,7 +93,7 @@ public interface TopicMapper {
      * @return 影响行数
      */
     @Delete("DELETE FROM post_topic WHERE post_id = #{postId} AND topic_id = #{topicId}")
-    int deletePostTopic(@Param("postId") Long postId, @Param("topicId") Integer topicId);
+    int unlinkPostTopic(@Param("postId") Long postId, @Param("topicId") Integer topicId);
     
     /**
      * 查询帖子关联的所有话题
@@ -120,4 +120,13 @@ public interface TopicMapper {
     List<Topic> search(@Param("keyword") String keyword,
                       @Param("offset") int offset,
                       @Param("pageSize") int pageSize);
+    
+    /**
+     * 获取帖子关联的所有话题ID
+     *
+     * @param postId 帖子ID
+     * @return 话题ID列表
+     */
+    @Select("SELECT topic_id FROM post_topic WHERE post_id = #{postId}")
+    List<Integer> getTopicIdsByPostId(Long postId);
 } 
