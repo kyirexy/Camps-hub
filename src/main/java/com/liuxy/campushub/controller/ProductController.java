@@ -4,6 +4,7 @@ import com.liuxy.campushub.dto.ProductRequest;
 import com.liuxy.campushub.dto.ProductResponse;
 import com.liuxy.campushub.dto.ProductListResponse;
 import com.liuxy.campushub.service.ProductService;
+import com.liuxy.campushub.service.ImageService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,8 +12,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 商品控制器*
@@ -95,6 +98,9 @@ public class ProductController {
     @Autowired
     private ProductService productService;
 
+    @Autowired
+    private ImageService imageService;
+
     /**
      * 发布商品
      */
@@ -125,6 +131,30 @@ public class ProductController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("获取商品详情失败，商品ID：" + productId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * 获取当前用户发布的商品列表
+     */
+    @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ProductListResponse> getMyProducts(
+            @RequestAttribute("userId") Long userId,
+            @RequestParam(required = false, defaultValue = "出售中") String status,
+            @RequestParam(required = false, defaultValue = "createTime") String sortField,
+            @RequestParam(required = false, defaultValue = "desc") String sortOrder,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        logger.info("获取用户发布的商品列表，用户ID：{}，状态：{}，排序：{} {}，页码：{}，每页数量：{}", 
+            userId, status, sortField, sortOrder, pageNum, pageSize);
+        try {
+            ProductListResponse response = productService.getMyProducts(
+                userId, status, sortField, sortOrder, pageNum, pageSize);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("获取用户发布的商品列表失败，用户ID：" + userId, e);
             throw e;
         }
     }
@@ -212,6 +242,39 @@ public class ProductController {
         }
     }
 
+    /**
+     * 上传商品图片
+     */
+    @PostMapping("/images")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<Long>> uploadProductImages(
+            @RequestParam("files") List<MultipartFile> files,
+            @RequestAttribute("userId") Long userId) {
+        logger.info("上传商品图片，上传者ID：{}", userId);
+        try {
+            List<Long> imageIds = productService.uploadProductImages(files, userId);
+            return ResponseEntity.ok(imageIds);
+        } catch (Exception e) {
+            logger.error("上传商品图片失败，上传者ID：" + userId, e);
+            throw e;
+        }
+    }
 
-    
+    /**
+     * 删除商品图片
+     */
+    @DeleteMapping("/images/{imageId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> deleteProductImage(
+            @PathVariable Long imageId,
+            @RequestAttribute("userId") Long userId) {
+        logger.info("删除商品图片，图片ID：{}，用户ID：{}", imageId, userId);
+        try {
+            productService.deleteProductImage(imageId, userId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            logger.error("删除商品图片失败，图片ID：" + imageId, e);
+            throw e;
+        }
+    }
 } 

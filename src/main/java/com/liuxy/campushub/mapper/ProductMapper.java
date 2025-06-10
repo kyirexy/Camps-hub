@@ -147,4 +147,69 @@ public interface ProductMapper {
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("status") String status);
 
+    /**
+     * 查询用户发布的商品列表
+     *
+     * @param userId 用户ID
+     * @param status 商品状态
+     * @param sortField 排序字段
+     * @param sortOrder 排序方式
+     * @param offset 偏移量
+     * @param pageSize 每页记录数
+     * @return 商品列表
+     */
+    @Select("<script>" +
+            "SELECT p.*, u.username as seller_username " +
+            "FROM product p " +
+            "LEFT JOIN student_user u ON p.seller_id = u.user_id " +
+            "WHERE p.seller_id = #{userId} " +
+            "<if test='status != null'>" +
+            "AND p.status = #{status} " +
+            "</if>" +
+            "ORDER BY p.${sortField} ${sortOrder} " +
+            "LIMIT #{offset}, #{pageSize}" +
+            "</script>")
+    @Results({
+        @Result(property = "productId", column = "product_id", id = true),
+        @Result(property = "sellerId", column = "seller_id"),
+        @Result(property = "sellerUsername", column = "seller_username"),
+        @Result(property = "categoryId", column = "category_id"),
+        @Result(property = "title", column = "title"),
+        @Result(property = "description", column = "description"),
+        @Result(property = "priceType", column = "price_type"),
+        @Result(property = "minPrice", column = "min_price"),
+        @Result(property = "maxPrice", column = "max_price"),
+        @Result(property = "expectPrice", column = "expect_price"),
+        @Result(property = "coverImages", column = "cover_images", typeHandler = JsonListTypeHandler.class),
+        @Result(property = "contactWechat", column = "contact_wechat"),
+        @Result(property = "isContactVisible", column = "is_contact_visible"),
+        @Result(property = "viewCount", column = "view_count"),
+        @Result(property = "status", column = "status"),
+        @Result(property = "createTime", column = "create_time"),
+        @Result(property = "updateTime", column = "update_time")
+    })
+    List<Product> selectMyProducts(
+            @Param("userId") Long userId,
+            @Param("status") String status,
+            @Param("sortField") String sortField,
+            @Param("sortOrder") String sortOrder,
+            @Param("offset") Integer offset,
+            @Param("pageSize") Integer pageSize);
+
+    /**
+     * 查询用户发布的商品总数
+     *
+     * @param userId 用户ID
+     * @param status 商品状态
+     * @return 商品总数
+     */
+    @Select("<script>" +
+            "SELECT COUNT(*) FROM product " +
+            "WHERE seller_id = #{userId} " +
+            "<if test='status != null'>" +
+            "AND status = #{status} " +
+            "</if>" +
+            "</script>")
+    Long countMyProducts(@Param("userId") Long userId, @Param("status") String status);
+
 }

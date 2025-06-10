@@ -21,6 +21,7 @@ public class PostVO {
     private Integer viewCount;
     private Integer likeCount;
     private Integer commentCount;
+    private Integer shareCount;
     private Date createdAt;
     
     // 用户相关信息

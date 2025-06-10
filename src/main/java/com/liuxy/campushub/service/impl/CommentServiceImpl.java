@@ -10,6 +10,7 @@ import com.liuxy.campushub.vo.CommentVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,14 @@ import java.util.List;
 public class CommentServiceImpl implements CommentService {
 
     private static final Logger logger = LoggerFactory.getLogger(CommentServiceImpl.class);
+
+    // 注入图片访问基础URL
+    @Value("${image.access.base-url:http://localhost:8081}")
+    private String imageBaseUrl;
+
+    // 注入头像图片相对路径
+    @Value("${image.access.path.avatars:/avatars}")
+    private String avatarPath;
 
     @Autowired
     private CommentMapper commentMapper;
@@ -90,10 +99,29 @@ public class CommentServiceImpl implements CommentService {
             // 查询顶级评论
             List<CommentVO> topComments = commentMapper.selectByPostId(postId);
             
-            // 查询每个顶级评论的子评论
-            for (CommentVO comment : topComments) {
-                List<CommentVO> children = commentMapper.selectByParentId(comment.getCommentId());
-                comment.setChildren(children);
+            // 查询每个顶级评论的子评论并拼接头像URL
+            if (topComments != null) {
+                for (CommentVO comment : topComments) {
+                    // 拼接顶级评论的头像URL
+                    if (comment.getAvatar() != null && !comment.getAvatar().isEmpty()) {
+                        comment.setAvatar(imageBaseUrl + avatarPath + "/" + comment.getAvatar());
+                    }
+                    
+                    // 查询子评论
+                    List<CommentVO> children = commentMapper.selectByParentId(comment.getCommentId());
+                    
+                    // 拼接子评论的头像URL
+                    if (children != null) {
+                        for (CommentVO child : children) {
+                            if (child.getAvatar() != null && !child.getAvatar().isEmpty()) {
+                                child.setAvatar(imageBaseUrl + avatarPath + "/" + child.getAvatar());
+                            }
+                        }
+                    }
+                    
+                    // 将子评论设置到顶级评论中
+                    comment.setChildren(children);
+                }
             }
             
             return topComments;

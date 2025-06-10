@@ -8,6 +8,8 @@ import org.apache.ibatis.annotations.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -169,4 +171,57 @@ public interface PostMapper extends BaseMapper<Post> {
             ")" +
             "</script>")
     List<PostVO> findPostVOsByIds(@Param("postIds") List<Long> postIds);
+
+    /**
+     * 获取热点帖子列表
+     *
+     * @param limit 获取条数
+     * @return 热点帖子列表
+     */
+    @Select("SELECT p.*, u.username, i.file_path as avatar, c.name as category_name " +
+            "FROM post p " +
+            "LEFT JOIN student_user u ON p.user_id = u.user_id " +
+            "LEFT JOIN image i ON u.avatar_image_id = i.id " +
+            "LEFT JOIN category c ON p.category_id = c.category_id " +
+            "WHERE p.status = 'PUBLISHED' " +
+            "ORDER BY p.hot_score DESC " +
+            "LIMIT #{limit}")
+    List<PostVO> getHotPosts(@Param("limit") int limit);
+
+    /**
+     * 更新帖子热度分数
+     *
+     * @param postId 帖子ID
+     * @param hotScore 热度分数
+     * @return 影响行数
+     */
+    @Update("UPDATE post SET hot_score = #{hotScore}, last_hot_calc = NOW() " +
+            "WHERE post_id = #{postId}")
+    int updateHotScore(@Param("postId") Long postId, @Param("hotScore") BigDecimal hotScore);
+
+    /**
+     * 获取需要更新热度的帖子列表
+     *
+     * @param lastCalcTime 上次计算时间
+     * @return 帖子列表
+     */
+    @Select("SELECT * FROM post " +
+            "WHERE status = 'PUBLISHED' " +
+            "AND (last_hot_calc IS NULL OR last_hot_calc < #{lastCalcTime})")
+    List<Post> getPostsNeedHotCalc(@Param("lastCalcTime") LocalDateTime lastCalcTime);
+
+    /**
+     * 获取5天内按热度排序的热点帖子
+     * @param fromTime 起始时间（5天前）
+     * @param limit 获取条数
+     * @return 热点帖子列表
+     */
+    @Select("SELECT p.*, u.username, i.file_path as avatar, c.name as category_name " +
+            "FROM post p " +
+            "LEFT JOIN student_user u ON p.user_id = u.user_id " +
+            "LEFT JOIN image i ON u.avatar_image_id = i.id " +
+            "LEFT JOIN category c ON p.category_id = c.category_id " +
+            "WHERE p.status = 'PUBLISHED' AND p.created_at >= #{fromTime} " +
+            "ORDER BY p.hot_score DESC LIMIT #{limit}")
+    List<PostVO> getLatestHotPosts(@Param("fromTime") java.time.LocalDateTime fromTime, @Param("limit") int limit);
 }

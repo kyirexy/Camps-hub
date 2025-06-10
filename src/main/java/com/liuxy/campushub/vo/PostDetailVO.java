@@ -11,6 +11,10 @@ public class PostDetailVO {
     //private List<Attachment> attachments;
     //private LostFound lostFound;
 
+    // 添加直接的用户名字段和头像URL字段
+    private String username;
+    private String avatar;
+
     public PostDetailVO(Post post, List<Topic> topics
                       /*List<Attachment> attachments, LostFound lostFound*/) {
         this.post = post;

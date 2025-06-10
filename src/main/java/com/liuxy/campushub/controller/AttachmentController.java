@@ -41,6 +41,8 @@ public class AttachmentController {
             return Result.success(fileId);
         } catch (IOException e) {
             return Result.error("文件上传失败: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -62,6 +64,8 @@ public class AttachmentController {
             return Result.success(fileIds);
         } catch (IOException e) {
             return Result.error("文件上传失败: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

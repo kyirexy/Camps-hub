@@ -18,4 +18,5 @@ public class UserInfoDTO {
     private String bio;
     private Integer userRole;
     private Integer status;
+    private String avatarUrl;
 }

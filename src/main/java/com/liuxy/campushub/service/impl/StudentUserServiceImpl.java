@@ -2,23 +2,43 @@ package com.liuxy.campushub.service.impl;
 
 import com.liuxy.campushub.dto.*;
 import com.liuxy.campushub.entity.StudentUser;
+import com.liuxy.campushub.entity.Image;
 import com.liuxy.campushub.mapper.StudentUserMapper;
+import com.liuxy.campushub.mapper.ImageMapper;
 import com.liuxy.campushub.service.StudentUserService;
 import com.liuxy.campushub.utils.JwtTokenUtil;
+import com.liuxy.campushub.util.SftpUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 @Service
 public class StudentUserServiceImpl implements StudentUserService {
 
+    @Value("${upload.avatar.path:/data/images/avatars}")
+    private String avatarUploadPath;
+
+    @Value("${upload.avatar.url:http://117.72.104.119/avatars}")
+    private String avatarUrlPrefix;
+
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
+
+    @Autowired
+    private ImageMapper imageMapper;
+
+    @Autowired
+    private SftpUtil sftpUtil;
 
     private static final Logger logger = LoggerFactory.getLogger(StudentUserServiceImpl.class);
 
@@ -77,7 +97,7 @@ public class StudentUserServiceImpl implements StudentUserService {
             studentUser.setBio(""); // 空字符串，后续完善
             studentUser.setJwPassword(null); // 教务密码默认为null
             studentUser.setCreditScore(100); // 默认信用分100
-            studentUser.setAvatarUrl(""); // 默认空头像
+            studentUser.setAvatarImageId(1); // 默认头像
             studentUser.setRegisterTime(LocalDateTime.now());//时间为当前时间
 
             logger.debug("Attempting to insert new user into database");
@@ -111,6 +131,14 @@ public class StudentUserServiceImpl implements StudentUserService {
         if (user == null) {
             throw new RuntimeException("用户不存在");
         }
+        // 查询头像图片
+        String avatarUrl = null;
+        if (user.getAvatarImageId() != null) {
+            Image image = imageMapper.selectById(Long.valueOf(user.getAvatarImageId()));
+            if (image != null && image.getFilePath() != null) {
+                avatarUrl = avatarUrlPrefix + "/" + image.getFilePath();
+            }
+        }
         return UserInfoDTO.builder()
                 .userId(user.getUserId())
                 .username(user.getUsername())
@@ -124,6 +152,7 @@ public class StudentUserServiceImpl implements StudentUserService {
                 .bio(user.getBio())
                 .userRole(user.getUserRole())
                 .status(user.getStatus())
+                .avatarUrl(avatarUrl)
                 .build();
     }
 
@@ -185,7 +214,7 @@ public class StudentUserServiceImpl implements StudentUserService {
 
         try {
             studentUserMapper.update(user);
-            return new UpdateResponse(true, "用户信息更新成功");
+            return UpdateResponse.success("用户信息更新成功");
         } catch (Exception e) {
             throw new RuntimeException("更新用户信息失败：" + e.getMessage());
         }
@@ -200,7 +229,7 @@ public class StudentUserServiceImpl implements StudentUserService {
 
         // 验证旧密码
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
-            return new UpdateResponse(false, "旧密码错误");
+            return UpdateResponse.failure("旧密码错误");
         }
 
         // 更新密码
@@ -208,9 +237,53 @@ public class StudentUserServiceImpl implements StudentUserService {
 
         try {
             studentUserMapper.update(user);
-            return new UpdateResponse(true, "密码修改成功");
+            return UpdateResponse.success("密码修改成功");
         } catch (Exception e) {
             throw new RuntimeException("修改密码失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    public UpdateResponse uploadAvatar(Long userId, MultipartFile file) {
+        logger.info("开始上传头像 - 用户ID: {}, 文件名: {}, 大小: {} bytes, 类型: {}", 
+            userId, file.getOriginalFilename(), file.getSize(), file.getContentType());
+
+        // 验证用户是否存在
+        StudentUser user = studentUserMapper.selectById(userId);
+        if (user == null) {
+            return UpdateResponse.failure("用户不存在");
+        }
+
+        // 验证文件类型
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return UpdateResponse.failure("只允许上传图片文件");
+        }
+
+        try {
+            // 使用SFTP上传文件
+            String filename = sftpUtil.uploadFile(file, avatarUploadPath);
+            logger.info("头像上传成功 - 用户ID: {}, 文件名: {}", userId, filename);
+
+            // 插入图片信息到数据库
+            Image image = new Image();
+            image.setFilePath(filename);
+            image.setOriginName(file.getOriginalFilename());
+            image.setFileSize((int) file.getSize());
+            image.setStatus(1);
+            image.setUploaderId(userId);
+            image.setUsageType("avatar");
+            image.setUploadTime(LocalDateTime.now());
+            imageMapper.insert(image);
+
+            // 更新用户头像ID
+            user.setAvatarImageId(image.getId());
+            studentUserMapper.update(user);
+
+            return UpdateResponse.success("头像上传成功");
+        } catch (Exception e) {
+            logger.error("头像上传失败 - 用户ID: {}, 错误: {}", userId, e.getMessage());
+            return UpdateResponse.failure("头像上传失败: " + e.getMessage());
         }
     }
 }

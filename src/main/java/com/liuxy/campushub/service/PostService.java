@@ -3,7 +3,7 @@ package com.liuxy.campushub.service;
 import com.liuxy.campushub.entity.Post;
 import com.liuxy.campushub.vo.PostVO;
 import com.liuxy.campushub.vo.ScrollResult;
-import com.liuxy.campushub.vo.PostDetailVO;
+import com.liuxy.campushub.vo.PostDetailResponseVO;
 import com.liuxy.campushub.vo.HotPostVO;
 import java.util.Date;
 import java.util.List;
@@ -133,9 +133,9 @@ public interface PostService {
      * 获取帖子详情
      *
      * @param postId 帖子ID
-     * @return 帖子详情VO对象
+     * @return 帖子详情VO
      */
-    PostDetailVO getPostDetail(Long postId);
+    PostDetailResponseVO getPostDetail(Long postId);
 
     /**
      * 根据用户ID分页查询帖子列表
@@ -171,4 +171,11 @@ public interface PostService {
      * @return 突发热点帖子列表
      */
     List<HotPostVO> getBurstHotPosts(int limit);
+
+    /**
+     * 获取5天内按热度排序的热点帖子
+     * @param limit 获取条数
+     * @return 热点帖子列表
+     */
+    List<Post> getLatestPosts(int limit);
 } 

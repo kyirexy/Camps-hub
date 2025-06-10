@@ -15,36 +15,36 @@
 ```json
 {
     "code": 200,
-    "message": "success",
+    "message": "操作成功",
     "data": {
         "postId": 1,
+        "userId": 1,
+        "categoryId": 1,
         "title": "帖子标题",
         "content": "帖子内容",
-        "postType": "normal",
-        "createdAt": "2024-04-07 10:00:00",
-        "updatedAt": "2024-04-07 10:00:00",
+        "postType": "NORMAL",
+        "bountyAmount": null,
+        "bountyStatus": null,
+        "emergencyLevel": null,
         "viewCount": 100,
         "likeCount": 50,
         "commentCount": 20,
-        "categoryName": "分类名称",
-        "categoryId": 1,
-        "author": {
-            "userId": 1,
-            "username": "用户名",
-            "avatar": "头像URL",
-            "level": 1,
-            "signature": "个性签名"
-        },
-        "images": [
+        "shareCount": 10,
+        "status": "PUBLISHED",
+        "createdAt": "2024-04-07T10:00:00",
+        "updatedAt": "2024-04-07T10:00:00.000+00:00",
+        "username": "用户名",
+        "avatar": "http://localhost:8081/avatars/头像文件名.png", // 完整的头像URL
+        "topics": [
             {
-                "imageId": 1,
-                "url": "图片URL",
-                "width": 800,
-                "height": 600
+                "topicId": 1,
+                "topicName": "话题名称",
+                "creatorId": 1,
+                "creatorUsername": "话题创建者用户名",
+                "creatorAvatarUrl": "http://localhost:8081/avatars/话题创建者头像文件名.png" // 话题创建者完整的头像URL
             }
-        ],
-        "isLiked": false,
-        "isCollected": false
+        ]
+        // 可能还包含其他字段，例如附件列表等，根据PostDetailResponseVO的实际定义补充
     }
 }
 ```

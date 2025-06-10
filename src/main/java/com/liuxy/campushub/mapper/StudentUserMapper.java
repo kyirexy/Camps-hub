@@ -21,7 +21,7 @@ public interface StudentUserMapper {
             @Result(property = "userRole", column = "user_role"),
             @Result(property = "registerTime", column = "register_time"),
             @Result(property = "lastLogin", column = "last_login"),
-            @Result(property = "avatarUrl", column = "avatar_url"),
+            @Result(property = "avatarImageId", column = "avatar_image_id"),
             @Result(property = "jwPassword", column = "jw_password"),
             @Result(property = "creditScore", column = "credit_score")
     })
@@ -31,11 +31,11 @@ public interface StudentUserMapper {
     @Insert("INSERT INTO student_user (" +
             "username, password, real_name, student_number, gender, phone, email, " +
             "college_id, college_name, major, grade, user_role, register_time, last_login, " +
-            "avatar_url, bio, status, jw_password, credit_score) " +
+            "avatar_image_id, bio, status, jw_password, credit_score) " +
             "VALUES (" +
             "#{username}, #{password}, #{realName}, #{studentNumber}, #{gender}, #{phone}, #{email}, " +
             "#{collegeId}, #{collegeName}, #{major}, #{grade}, #{userRole}, #{registerTime}, #{lastLogin}, " +
-            "#{avatarUrl}, #{bio}, #{status}, #{jwPassword}, #{creditScore})")
+            "#{avatarImageId}, #{bio}, #{status}, #{jwPassword}, #{creditScore})")
     @Options(useGeneratedKeys = true, keyProperty = "userId")
     int insert(StudentUser studentUser);
 
@@ -70,7 +70,8 @@ public interface StudentUserMapper {
             "phone = #{phone}, " +
             "email = #{email}, " +
             "bio = #{bio}, " +
-            "password = #{password} " +
+            "password = #{password}, " +
+            "avatar_image_id = #{avatarImageId} " +
             "WHERE user_id = #{userId}")
     int update(StudentUser studentUser);
 

@@ -1,9 +1,11 @@
 package com.liuxy.campushub.entity;
 
+import com.baomidou.mybatisplus.annotation.IEnum;
+
 /**
  * 帖子状态枚举
  */
-public enum PostStatusEnum {
+public enum PostStatusEnum implements IEnum<String> {
     DRAFT("draft", "草稿"),
     PUBLISHED("published", "已发布"),
     HIDDEN("hidden", "已隐藏"),
@@ -15,6 +17,11 @@ public enum PostStatusEnum {
     PostStatusEnum(String code, String description) {
         this.code = code;
         this.description = description;
+    }
+
+    @Override
+    public String getValue() {
+        return this.code;
     }
 
     public String getCode() {

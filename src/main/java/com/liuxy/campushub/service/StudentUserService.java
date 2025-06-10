@@ -8,6 +8,7 @@ import com.liuxy.campushub.dto.UserInfoDTO;
 import com.liuxy.campushub.dto.UpdateResponse;
 import com.liuxy.campushub.dto.UpdateUserRequest;
 import com.liuxy.campushub.dto.ChangePasswordRequest;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface StudentUserService {
     RegisterResponse register(RegisterRequest request);
@@ -42,4 +43,12 @@ public interface StudentUserService {
      * @return 修改结果
      */
     UpdateResponse changePassword(Long userId, ChangePasswordRequest request);
+
+    /**
+     * 上传用户头像
+     * @param userId 用户ID
+     * @param file 头像文件
+     * @return 上传结果
+     */
+    UpdateResponse uploadAvatar(Long userId, MultipartFile file);
 }

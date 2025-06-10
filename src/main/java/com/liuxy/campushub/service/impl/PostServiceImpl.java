@@ -30,6 +30,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.io.FileInputStream;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.mock.web.MockMultipartFile;
+import com.liuxy.campushub.util.SftpUtil;
+import java.time.ZoneId;
+import java.time.Instant;
+import com.liuxy.campushub.vo.PostDetailResponseVO;
 
 /**
  * 帖子服务实现类
@@ -44,22 +51,47 @@ public class PostServiceImpl implements PostService {
     private final AttachmentService attachmentService;
     private final CategoryService categoryService;
     private final TopicService topicService;
+    private final SftpUtil sftpUtil;
+
+    // 注入图片访问基础URL
+    @Value("${image.access.base-url:http://localhost:8081}") 
+    private String imageBaseUrl;
+
+    // 注入头像图片相对路径
+    @Value("${image.access.path.avatars:/avatars}") 
+    private String avatarPath;
 
     @Autowired
     public PostServiceImpl(PostMapper postMapper, 
                           AttachmentService attachmentService,
                           CategoryService categoryService,
-                          TopicService topicService) {
+                          TopicService topicService,
+                          SftpUtil sftpUtil) {
         this.postMapper = postMapper;
         this.attachmentService = attachmentService;
         this.categoryService = categoryService;
         this.topicService = topicService;
+        this.sftpUtil = sftpUtil;
     }
 
     private static final Logger logger = LoggerFactory.getLogger(PostServiceImpl.class);
     
-    @Value("${file.upload.path}")
+    @Value("${upload.path}")
     private String uploadPath;
+
+    @Value("${upload.avatar.path}")
+    private String avatarDiskPath; // 修改字段名避免冲突
+
+    /**
+     * 获取完整的头像URL
+     */
+    private String getCompleteAvatarUrl(String avatarFileName) {
+        if (avatarFileName == null || avatarFileName.trim().isEmpty()) {
+            return null;
+        }
+        // 拼接基础URL、头像路径和文件名
+        return imageBaseUrl + avatarPath + "/" + avatarFileName;
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -166,7 +198,7 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public PostDetailVO getPostDetail(Long postId) {
+    public PostDetailResponseVO getPostDetail(Long postId) {
         try {
             logger.info("开始获取帖子详情，postId: {}", postId);
             
@@ -179,9 +211,9 @@ public class PostServiceImpl implements PostService {
             // 获取帖子关联的话题
             List<Topic> topics = topicService.getTopicsByPostId(postId);
             
-            // 构建并返回详情VO
-            PostDetailVO detailVO = new PostDetailVO(post, topics);
-            
+            // 构建并返回详情VO，在构建时处理URL拼接
+            PostDetailResponseVO detailVO = PostDetailResponseVO.fromEntities(post, topics, imageBaseUrl, avatarPath);
+
             logger.info("获取帖子详情成功，postId: {}", postId);
             return detailVO;
             
@@ -354,12 +386,28 @@ public class PostServiceImpl implements PostService {
             for (String base64Image : base64Images) {
                 byte[] imageBytes = Base64.getDecoder().decode(base64Image);
                 String fileName = UUID.randomUUID().toString() + ".jpg";
-                String filePath = uploadPath + File.separator + fileName;
                 
-                try (FileOutputStream fos = new FileOutputStream(filePath)) {
+                // 创建临时文件
+                File tempFile = File.createTempFile("upload_", ".jpg");
+                try (FileOutputStream fos = new FileOutputStream(tempFile)) {
                     fos.write(imageBytes);
                 }
                 
+                // 上传到SFTP服务器
+                try (FileInputStream fis = new FileInputStream(tempFile)) {
+                    MultipartFile multipartFile = new MockMultipartFile(
+                        fileName,
+                        fileName,
+                        "image/jpeg",
+                        fis
+                    );
+                    sftpUtil.uploadFile(multipartFile, avatarDiskPath);
+                }
+                
+                // 删除临时文件
+                tempFile.delete();
+                
+                // 创建附件记录
                 attachmentService.createAttachment(postId, fileName);
             }
         } catch (Exception e) {
@@ -405,6 +453,15 @@ public class PostServiceImpl implements PostService {
             List<PostVO> posts = postMapper.getPostsWaterfall(params);
             logger.info("成功加载 {} 条帖子", posts.size());
             
+            // 拼接完整的头像URL
+            if (posts != null && !posts.isEmpty()) {
+                for (PostVO post : posts) {
+                    if (post.getAvatar() != null && !post.getAvatar().isEmpty()) {
+                        post.setAvatar(imageBaseUrl + avatarPath + "/" + post.getAvatar());
+                    }
+                }
+            }
+            
             // 构建返回结果
             ScrollResult<PostVO> result = new ScrollResult<>();
             result.setItems(posts);
@@ -439,28 +496,66 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public List<HotPostVO> getHotPosts(int limit) {
-        logger.info("获取热点帖子列表，限制条数: {}", limit);
+        try {
+            logger.info("开始获取热点帖子列表，limit: {}", limit);
         
-        // 获取所有已发布的帖子
-        List<Post> posts = postMapper.findAllByStatus(PostStatusEnum.PUBLISHED);
-        if (CollectionUtils.isEmpty(posts)) {
-            logger.info("没有找到已发布的帖子");
+            // 获取热点帖子列表
+            List<PostVO> postVOs = postMapper.getHotPosts(limit);
+            if (CollectionUtils.isEmpty(postVOs)) {
             return Collections.emptyList();
         }
         
-        // 计算热度并排序
-        List<Post> sortedPosts = posts.stream()
-                .map(post -> {
-                    double hotness = HotPostModel.calculateHotness(post);
-                    post.setHotness(hotness); // 需要在Post类中添加hotness字段
-                    return post;
-                })
-                .sorted((p1, p2) -> Double.compare(p2.getHotness(), p1.getHotness()))
-                .limit(limit)
+            // 转换为HotPostVO
+            return postVOs.stream()
+                    .map(postVO -> {
+                        HotPostVO hotPostVO = new HotPostVO();
+                        BeanUtils.copyProperties(postVO, hotPostVO);
+                        
+                        // 计算热度值
+                        double hotness = calculateHotness(postVO);
+                        hotPostVO.setHotness(hotness);
+                        
+                        // Date -> LocalDateTime
+                        Date createdAt = postVO.getCreatedAt();
+                        LocalDateTime ldt = LocalDateTime.ofInstant(createdAt.toInstant(), ZoneId.systemDefault());
+                        LocalDateTime oneDayAgo = LocalDateTime.now().minusDays(1);
+                        hotPostVO.setIsNew(ldt.isAfter(oneDayAgo));
+                        
+                        // 判断是否为突发热点
+                        hotPostVO.setIsBurst(postVO.getCommentCount() > 100);
+                        
+                        return hotPostVO;
+                    })
+                    .sorted(Comparator.comparing(HotPostVO::getHotness).reversed())
                 .collect(Collectors.toList());
         
-        // 转换为HotPostVO
-        return convertToHotPostVO(sortedPosts);
+        } catch (Exception e) {
+            logger.error("获取热点帖子列表失败", e);
+            throw new BusinessException("获取热点帖子列表失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 计算帖子热度值
+     * 
+     * @param postVO 帖子VO对象
+     * @return 热度值
+     */
+    private double calculateHotness(PostVO postVO) {
+        // 获取时间衰减因子
+        Date createdAt = postVO.getCreatedAt();
+        LocalDateTime ldt = LocalDateTime.ofInstant(createdAt.toInstant(), ZoneId.systemDefault());
+        long hoursSinceCreation = ChronoUnit.HOURS.between(ldt, LocalDateTime.now());
+        double timeDecay = Math.pow(0.2, hoursSinceCreation);
+        
+        // 计算基础热度值
+        double baseHotness = postVO.getViewCount() * 0.2 +
+                           postVO.getLikeCount() * 0.3 +
+                           postVO.getCommentCount() * 0.25 +
+                           postVO.getShareCount() * 0.1;
+        
+        // 应用时间衰减
+        return baseHotness * timeDecay;
     }
     
     @Override
@@ -546,7 +641,7 @@ public class PostServiceImpl implements PostService {
         // 设置排名和突发热点标记
         for (int i = 0; i < hotPostVOs.size(); i++) {
             hotPostVOs.get(i).setRank(i + 1);
-            hotPostVOs.get(i).setBurst(true);
+            hotPostVOs.get(i).setIsBurst(true);
         }
         
         return hotPostVOs;
@@ -568,17 +663,22 @@ public class PostServiceImpl implements PostService {
                 .map(Post::getPostId)
                 .collect(Collectors.toList());
         
-        // 批量获取帖子VO
+        // 批量获取帖子VO (Mapper查询会包含avatar文件名)
         List<PostVO> postVOs = postMapper.findPostVOsByIds(postIds);
         
-        // 转换为HotPostVO
+        // 将PostVO转换为HotPostVO并拼接头像URL
         return postVOs.stream()
                 .map(postVO -> {
                     HotPostVO hotPostVO = new HotPostVO();
-                    // 复制PostVO属性
+                    // 复制PostVO属性，包括avatar文件名
                     BeanUtils.copyProperties(postVO, hotPostVO);
                     
-                    // 查找对应的Post实体
+                    // 拼接完整的头像URL
+                    if (hotPostVO.getAvatar() != null) {
+                        hotPostVO.setAvatar(getCompleteAvatarUrl(hotPostVO.getAvatar()));
+                    }
+                    
+                    // 查找对应的Post实体，用于设置热度、isNew、isBurst等字段
                     Post post = posts.stream()
                             .filter(p -> p.getPostId().equals(postVO.getPostId()))
                             .findFirst()
@@ -590,13 +690,30 @@ public class PostServiceImpl implements PostService {
                         
                         // 判断是否为新发布（24小时内）
                         LocalDateTime oneDayAgo = LocalDateTime.now().minusDays(1);
-                        hotPostVO.setNew(post.getCreatedAt().isAfter(oneDayAgo));
+                        hotPostVO.setIsNew(post.getCreatedAt().isAfter(oneDayAgo));
                         
                         // 判断是否为突发热点
-                        hotPostVO.setBurst(post.getCommentCount() > 100);
+                        hotPostVO.setIsBurst(post.getCommentCount() > 100);
                     }
                     
                     return hotPostVO;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Post> getLatestPosts(int limit) {
+        // 获取5天内的已发布帖子，按热度分数降序排列
+        LocalDateTime fiveDaysAgo = LocalDateTime.now().minusDays(5);
+        // 获取包含用户头像信息的帖子列表
+        List<PostVO> postVOs = postMapper.getLatestHotPosts(fiveDaysAgo, limit);
+        
+        // 转换为Post实体
+        return postVOs.stream()
+                .map(postVO -> {
+                    Post post = new Post();
+                    BeanUtils.copyProperties(postVO, post);
+                    return post;
                 })
                 .collect(Collectors.toList());
     }

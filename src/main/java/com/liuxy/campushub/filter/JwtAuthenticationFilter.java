@@ -47,18 +47,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String requestTokenHeader = request.getHeader("Authorization");
         logger.debug("Authorization header: {}", requestTokenHeader);
 
-        String username = null;
-        String jwtToken = null;
+        // 如果没有token，直接放行
+        if (requestTokenHeader == null || !requestTokenHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-        if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
-            jwtToken = requestTokenHeader.substring(7);
+        String username = null;
+        String jwtToken = requestTokenHeader.substring(7);
+        if (jwtToken == null || jwtToken.isBlank() || "null".equalsIgnoreCase(jwtToken)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        Long userId = null;
             logger.debug("JWT Token: {}", jwtToken);
             try {
-                username = jwtTokenUtil.parseToken(jwtToken).get("username", String.class);
-                logger.debug("Parsed username: {}", username);
+                var claims = jwtTokenUtil.parseToken(jwtToken);
+                username = claims.get("username", String.class);
+                userId = claims.get("userId", Long.class);
+                logger.debug("Parsed username: {}, userId: {}", username, userId);
             } catch (IllegalArgumentException | ExpiredJwtException e) {
                 logger.error("JWT Token解析错误", e);
-            }
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -71,6 +80,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                
+                // 将用户ID添加到请求属性中
+                if (userId != null) {
+                    request.setAttribute("userId", userId);
+                    logger.debug("Added userId to request attributes: {}", userId);
+                }
             } else {
                 logger.debug("Token validation failed");
             }

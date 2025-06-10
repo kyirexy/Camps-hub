@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
 
 /**
@@ -105,6 +106,20 @@ import jakarta.validation.Valid;
  * Authorization: Bearer {token}
  * 响应：
  * 204 No Content
+ * 
+ * 7. 上传用户头像
+ * POST /api/v1/student/{userId}/avatar
+ * 请求头：
+ * Authorization: Bearer {token}
+ * 请求体：
+ * {
+ *   "file": "multipart/form-data"
+ * }
+ * 响应：
+ * {
+ *   "success": boolean,       // 是否成功
+ *   "message": "string"       // 响应消息
+ * }
  */
 @RestController
 @RequestMapping("/api/v1/student")
@@ -214,6 +229,27 @@ public class StudentUserController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("修改密码失败，用户ID：" + userId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * 上传用户头像
+     * @param userId 用户ID
+     * @param file 头像文件
+     * @return 上传结果
+     */
+    @PostMapping("/{userId}/avatar")
+    @PreAuthorize("hasRole('ADMIN') or principal.userId == #userId")
+    public ResponseEntity<UpdateResponse> uploadAvatar(
+            @PathVariable Long userId,
+            @RequestParam("file") MultipartFile file) {
+        logger.info("上传用户头像，用户ID：{}", userId);
+        try {
+            UpdateResponse response = studentUserService.uploadAvatar(userId, file);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("上传用户头像失败，用户ID：" + userId, e);
             throw e;
         }
     }

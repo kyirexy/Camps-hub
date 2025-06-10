@@ -34,6 +34,12 @@ public class Topic {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now(); // 创建时间自动填充
 
+    @Transient
+    private String avatarUrl; // 创建者头像URL
+
+    @Transient
+    private String username; // 创建者用户名
+
     // 构造函数优化：必填字段初始化
     public Topic(String topicName, Long creatorId) {
         this.topicName = topicName;

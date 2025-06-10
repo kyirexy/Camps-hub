@@ -18,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.http.HttpMethod;
 
 import java.util.Arrays;
 
@@ -45,16 +46,18 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
+                auth.requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll();
+                auth.requestMatchers(HttpMethod.GET, "/api/topics/**").permitAll();
+                auth.requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll();
                 auth.requestMatchers(
                         "/api/auth/**",
                         "/api/v1/student/login",
                         "/api/v1/student/register",
                         "/api/weather/**",
-                        "/api/posts/hot/**",
                         "/swagger-ui/**",
                         "/v3/api-docs/**"
-                    ).permitAll()
-                    .anyRequest().authenticated();
+                    ).permitAll();
+                auth.anyRequest().authenticated();
             })
             .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
             .build();

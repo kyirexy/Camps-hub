@@ -4,8 +4,10 @@ import com.liuxy.campushub.dto.ProductRequest;
 import com.liuxy.campushub.dto.ProductResponse;
 import com.liuxy.campushub.dto.ProductListResponse;
 import com.liuxy.campushub.entity.Product;
+import com.liuxy.campushub.entity.Image;
 import com.liuxy.campushub.mapper.ProductMapper;
 import com.liuxy.campushub.service.ProductService;
+import com.liuxy.campushub.service.ImageService;
 import com.liuxy.campushub.utils.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +15,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -32,6 +35,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private ProductMapper productMapper;
+
+    @Autowired
+    private ImageService imageService;
 
     @Override
     @Transactional
@@ -248,6 +254,103 @@ public class ProductServiceImpl implements ProductService {
         } catch (Exception e) {
             logger.error("查询商品列表失败", e);
             throw e;
+        }
+    }
+
+    @Override
+    @Transactional
+    public List<Long> uploadProductImages(List<MultipartFile> files, Long userId) {
+        logger.info("上传商品图片，上传者ID：{}", userId);
+        try {
+            // 上传图片
+            List<Image> images = imageService.uploadImages(files, userId, "product");
+            
+            // 返回图片ID列表，将Integer转换为Long
+            return images.stream()
+                    .map(image -> image.getId().longValue())
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.error("上传商品图片失败，上传者ID：" + userId, e);
+            throw new RuntimeException("上传商品图片失败", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteProductImage(Long imageId, Long userId) {
+        logger.info("删除商品图片，图片ID：{}，用户ID：{}", imageId, userId);
+        try {
+            // 获取图片信息
+            Image image = imageService.getImageById((long) imageId.intValue());
+            if (image == null) {
+                throw new RuntimeException("图片不存在");
+            }
+
+            // 验证权限
+            if (!image.getUploaderId().equals(userId)) {
+                throw new RuntimeException("无权删除该图片");
+            }
+
+            // 删除图片
+            boolean success = imageService.deleteImage((long) imageId.intValue());
+            if (!success) {
+                throw new RuntimeException("删除图片失败");
+            }
+        } catch (Exception e) {
+            logger.error("删除商品图片失败，图片ID：" + imageId, e);
+            throw new RuntimeException("删除商品图片失败", e);
+        }
+    }
+
+    @Override
+    public ProductListResponse getMyProducts(
+            Long userId,
+            String status,
+            String sortField,
+            String sortOrder,
+            Integer pageNum,
+            Integer pageSize) {
+        logger.info("查询用户发布的商品列表，用户ID：{}", userId);
+        try {
+            // 计算偏移量
+            int offset = (pageNum - 1) * pageSize;
+
+            // 映射排序字段到数据库列名
+            String dbSortField = switch (sortField) {
+                case "createTime" -> "create_time";
+                case "updateTime" -> "update_time";
+                case "price" -> "min_price";
+                case "viewCount" -> "view_count";
+                default -> "create_time";
+            };
+
+            // 查询商品列表
+            List<Product> products = productMapper.selectMyProducts(
+                userId, status, dbSortField, sortOrder, offset, pageSize);
+
+            // 查询总记录数
+            Long total = productMapper.countMyProducts(userId, status);
+
+            // 转换为响应DTO
+            List<ProductResponse> productResponses = products.stream()
+                .map(product -> {
+                    ProductResponse response = new ProductResponse();
+                    BeanUtils.copyProperties(product, response);
+                    return response;
+                })
+                .collect(Collectors.toList());
+
+            // 构建响应对象
+            ProductListResponse response = new ProductListResponse();
+            response.setProducts(productResponses);
+            response.setTotal(total);
+            response.setPageNum(pageNum);
+            response.setPageSize(pageSize);
+
+            return response;
+        } catch (Exception e) {
+            logger.error("查询用户发布的商品列表失败，用户ID：" + userId, e);
+            throw new RuntimeException("查询用户发布的商品列表失败", e);
         }
     }
 } 

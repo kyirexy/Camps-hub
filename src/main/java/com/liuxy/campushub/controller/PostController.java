@@ -8,11 +8,12 @@ import com.liuxy.campushub.service.PostService;
 import com.liuxy.campushub.service.TopicService;
 import com.liuxy.campushub.service.AttachmentService;
 import com.liuxy.campushub.service.LostFoundService;
+import com.liuxy.campushub.service.HotPostService;
 import com.liuxy.campushub.common.Result;
-import com.liuxy.campushub.vo.PostDetailVO;
 import com.liuxy.campushub.vo.PostVO;
 import com.liuxy.campushub.vo.ScrollResult;
 import com.liuxy.campushub.vo.HotPostVO;
+import com.liuxy.campushub.vo.PostDetailResponseVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 import static com.liuxy.campushub.utils.SecurityUtil.getCurrentUserId;
 
@@ -57,6 +57,9 @@ public class PostController {
     
     @Autowired
     private LostFoundService lostFoundService;
+    
+    @Autowired
+    private HotPostService hotPostService;
     
     /**
      * 创建新帖子
@@ -224,7 +227,7 @@ public class PostController {
      * @return 帖子详情响应实体，包含基础信息、话题及扩展字段
      */
     @GetMapping("/{postId}")
-    public Result<PostDetailVO> getPostDetail(@PathVariable Long postId) {
+    public Result<PostDetailResponseVO> getPostDetail(@PathVariable Long postId) {
         final String METHOD_NAME = "getPostDetail";
         logger.debug("{} 方法调用 - 请求参数: postId={}", METHOD_NAME, postId);
 
@@ -236,37 +239,17 @@ public class PostController {
             }
 
             // 核心业务逻辑
-            Post post = postService.getPostById(postId);
-            if (post == null) {
-                logger.info("{} 数据不存在 - postId: {}", METHOD_NAME, postId);
-                return Result.error(404, "指定帖子不存在");
-            }
+            PostDetailResponseVO detailVO = postService.getPostDetail(postId);
 
-            // 异步更新计数
-            CompletableFuture.runAsync(() -> {
-                try {
-                    postService.incrementViewCount(postId);
-                    logger.debug("{} 浏览量更新成功 - postId: {}", METHOD_NAME, postId);
-                } catch (Exception e) {
-                    logger.error("{} 浏览量更新异常 - postId: {} | 错误: {}", METHOD_NAME, postId, e.getMessage());
-                }
-            });
+            logger.debug("{} 方法调用成功 - postId: {}", METHOD_NAME, postId);
+            return Result.success(detailVO);
 
-            // 构建响应数据
-            List<Topic> topics = topicService.getTopicsByPostId(postId);
-            PostDetailVO postDetail = new PostDetailVO(post, topics);
-
-            logger.debug("{} 执行成功 - 响应数据: {}", METHOD_NAME, postDetail);
-            return Result.success(postDetail);
-        } catch (BusinessException be) {
-            logger.error("{} 业务异常 - postId: {} | 错误码: {} | 原因: {}", 
-                METHOD_NAME, postId, be.getErrorCode(), be.getMessage());
-            return Result.error(be.getErrorCode(), be.getMessage());
+        } catch (BusinessException e) {
+            logger.error("{} 业务异常 - postId: {}", METHOD_NAME, postId, e);
+            return Result.error(e.getErrorCode(), e.getMessage());
         } catch (Exception e) {
             logger.error("{} 系统异常 - postId: {}", METHOD_NAME, postId, e);
-            return Result.error(500, "服务暂时不可用，请稍后重试");
-        } finally {
-            logger.debug("{} 方法结束 - postId: {}", METHOD_NAME, postId);
+            return Result.error(500, "获取帖子详情失败: " + e.getMessage());
         }
     }
     
@@ -454,14 +437,14 @@ public class PostController {
      * @return 热点帖子列表
      */
     @GetMapping("/hot")
-    public Result<List<HotPostVO>> getHotPosts(@RequestParam(defaultValue = "10") int limit) {
+    public Result getHotPosts(@RequestParam(defaultValue = "10") int limit) {
         try {
-            logger.info("获取热点帖子列表，限制条数: {}", limit);
-            List<HotPostVO> hotPosts = postService.getHotPosts(limit);
+            logger.info("收到获取热点帖子请求，limit: {}", limit);
+            List<HotPostVO> hotPosts = hotPostService.getHotPosts(limit);
             return Result.success(hotPosts);
         } catch (Exception e) {
-            logger.error("获取热点帖子列表失败", e);
-            return Result.error("获取热点帖子列表失败: " + e.getMessage());
+            logger.error("获取热点帖子失败", e);
+            return Result.error(500, "获取热点帖子失败: " + e.getMessage());
         }
     }
     

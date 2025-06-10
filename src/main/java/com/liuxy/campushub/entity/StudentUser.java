@@ -20,9 +20,13 @@ public class StudentUser {
     private Integer userRole;
     private LocalDateTime registerTime;
     private LocalDateTime lastLogin;
-    private String avatarUrl;
+    private Integer avatarImageId;
     private String bio;
     private Integer status;
     private String jwPassword;
     private Integer creditScore;
+
+    public void setAvatarImageId(Integer avatarImageId) {
+        this.avatarImageId = avatarImageId;
+    }
 }

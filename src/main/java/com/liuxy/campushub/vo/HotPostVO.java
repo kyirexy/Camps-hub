@@ -1,13 +1,15 @@
 package com.liuxy.campushub.vo;
 
+import com.liuxy.campushub.entity.Post;
+import com.liuxy.campushub.model.HotPostModel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.beans.BeanUtils;
+
+import java.util.Date;
 
 /**
- * 热点帖子视图对象
- * 
- * @author liuxy
- * @since 2024-04-27
+ * 热点帖子VO
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -16,20 +18,51 @@ public class HotPostVO extends PostVO {
     /**
      * 热度值
      */
-    private double hotness;
+    private Double hotness;
+    
+    /**
+     * 排名
+     */
+    private Integer rank;
     
     /**
      * 是否为新发布（24小时内）
      */
-    private boolean isNew;
+    private Boolean isNew;
     
     /**
      * 是否为突发热点
      */
-    private boolean isBurst;
+    private Boolean isBurst;
     
     /**
-     * 热度排名
+     * 从Post实体转换为HotPostVO
      */
-    private int rank;
+    public static HotPostVO fromPost(Post post) {
+        HotPostVO vo = new HotPostVO();
+        // 复制基本属性
+        BeanUtils.copyProperties(post, vo);
+        
+        // 计算热度相关属性
+        vo.setHotness(HotPostModel.calculateHotness(post));
+        vo.setIsNew(HotPostModel.isNewPost(post));
+        vo.setIsBurst(HotPostModel.isBurstHot(post));
+        
+        return vo;
+    }
+    
+    /**
+     * 从PostVO转换为HotPostVO
+     */
+    public static HotPostVO fromPostVO(PostVO postVO) {
+        HotPostVO vo = new HotPostVO();
+        // 复制基本属性
+        BeanUtils.copyProperties(postVO, vo);
+        
+        // 设置默认值
+        vo.setIsNew(false);
+        vo.setIsBurst(false);
+        
+        return vo;
+    }
 } 

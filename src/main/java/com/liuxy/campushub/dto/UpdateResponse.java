@@ -10,4 +10,12 @@ import lombok.NoArgsConstructor;
 public class UpdateResponse {
     private boolean success;
     private String message;
+
+    public static UpdateResponse success(String message) {
+        return new UpdateResponse(true, message);
+    }
+
+    public static UpdateResponse failure(String message) {
+        return new UpdateResponse(false, message);
+    }
 } 

@@ -98,9 +98,10 @@
             p.post_type, p.bounty_amount, p.bounty_status, p.emergency_level,
             p.view_count, p.like_count, p.comment_count, p.share_count,
             p.status, p.created_at, p.updated_at,
-            u.username, u.avatar_url as avatar
+            u.username, i.file_path as avatar
         FROM post p
         LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
         WHERE p.post_id = #{postId}
     </select>
 
@@ -123,53 +124,53 @@
     <select id="selectPostsByTime" resultMap="PostVOResultMap">
         SELECT <include refid="Base_Column_List"/>,
         u.username,
-        u.avatar_url,
+        i.file_path as avatar,
         c.category_name
         FROM post p
-
         LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
         LEFT JOIN category c ON p.category_id = c.category_id
-        WHERE p.status = 'published' <!-- 添加表别名 p. -->
+        WHERE p.status = 'published'
         <if test="lastTime != null">
-            AND p.created_at <![CDATA[ < ]]> #{lastTime} <!-- 添加表别名 p. -->
+            AND p.created_at <![CDATA[ < ]]> #{lastTime}
         </if>
-        ORDER BY p.created_at DESC <!-- 添加表别名 p. -->
+        ORDER BY p.created_at DESC
         LIMIT #{pageSize}
     </select>
 
     <select id="selectByCategoryForScroll" resultMap="PostVOResultMap">
         SELECT <include refid="Base_Column_List"/>,
         u.username,
-        u.avatar_url,
+        i.file_path as avatar,
         c.category_name
         FROM post p
-
         LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
         LEFT JOIN category c ON p.category_id = c.category_id
-        WHERE p.category_id = #{categoryId} <!-- 添加表别名 p. -->
-        AND p.status = 'published' <!-- 添加表别名 p. -->
+        WHERE p.category_id = #{categoryId}
+        AND p.status = 'published'
         <if test="lastTime != null">
-            AND p.created_at <![CDATA[ < ]]> #{lastTime} <!-- 添加表别名 p. -->
+            AND p.created_at <![CDATA[ < ]]> #{lastTime}
         </if>
-        ORDER BY p.created_at DESC <!-- 添加表别名 p. -->
+        ORDER BY p.created_at DESC
         LIMIT #{pageSize}
     </select>
 
     <select id="selectByUserForScroll" resultMap="PostVOResultMap">
         SELECT <include refid="Base_Column_List"/>,
         u.username,
-        u.avatar_url,
+        i.file_path as avatar,
         c.category_name
         FROM post p
-
         LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
         LEFT JOIN category c ON p.category_id = c.category_id
-        WHERE p.user_id = #{userId} <!-- 添加表别名 p. -->
-        AND p.status = 'published' <!-- 添加表别名 p. -->
+        WHERE p.user_id = #{userId}
+        AND p.status = 'published'
         <if test="lastTime != null">
-            AND p.created_at <![CDATA[ < ]]> #{lastTime} <!-- 添加表别名 p. -->
+            AND p.created_at <![CDATA[ < ]]> #{lastTime}
         </if>
-        ORDER BY p.created_at DESC <!-- 添加表别名 p. -->
+        ORDER BY p.created_at DESC
         LIMIT #{pageSize}
     </select>
 
@@ -179,9 +180,10 @@
             p.post_type, p.bounty_amount, p.bounty_status, p.emergency_level,
             p.view_count, p.like_count, p.comment_count, p.share_count,
             p.status, p.created_at, p.updated_at,
-            u.username, u.avatar_url, c.category_name
+            u.username, i.file_path as avatar, c.category_name
         FROM post p
         LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
         LEFT JOIN category c ON p.category_id = c.category_id
         WHERE p.status = #{status}
         <if test="lastTime != null">
@@ -194,17 +196,17 @@
     <select id="selectForScroll" resultMap="PostVOResultMap">
         SELECT <include refid="Base_Column_List"/>,
         u.username,
-        u.avatar_url,
+        i.file_path as avatar,
         c.category_name
         FROM post p
-
         LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
         LEFT JOIN category c ON p.category_id = c.category_id
-        WHERE p.status = 'published' <!-- 添加表别名 p. -->
+        WHERE p.status = 'published'
         <if test="lastTime != null">
-            AND p.created_at <![CDATA[ < ]]> #{lastTime} <!-- 添加表别名 p. -->
+            AND p.created_at <![CDATA[ < ]]> #{lastTime}
         </if>
-        ORDER BY p.created_at DESC <!-- 添加表别名 p. -->
+        ORDER BY p.created_at DESC
         LIMIT #{pageSize}
     </select>
 
@@ -240,11 +242,12 @@
             p.updated_at as updateTime,
             p.status,
             u.username as authorName,
-            u.avatar_url as authorAvatar,
+            i.file_path as authorAvatar,
             p.comment_count as commentCount,
             p.like_count as likeCount
         FROM post p
         LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
         WHERE p.user_id = #{userId}
         AND p.status = 'published'
         ORDER BY p.created_at DESC
@@ -256,10 +259,11 @@
     </select>
 
     <select id="findPostVOsByIds" resultMap="PostVOResultMap">
-        SELECT p.*, c.category_name, u.username, u.avatar_url as avatar 
+        SELECT p.*, c.category_name, u.username, i.file_path as avatar 
         FROM post p 
         LEFT JOIN category c ON p.category_id = c.category_id 
         LEFT JOIN student_user u ON p.user_id = u.user_id 
+        LEFT JOIN image i ON u.avatar_image_id = i.id
         WHERE p.post_id IN 
         <foreach collection="postIds" item="id" open="(" separator="," close=")">
             #{id}
@@ -269,6 +273,35 @@
             #{id}
         </foreach>
         )
+    </select>
+
+    <select id="getHotPosts" resultMap="PostVOResultMap">
+        SELECT p.*, c.category_name, u.username, i.file_path as avatar 
+        FROM post p
+        LEFT JOIN category c ON p.category_id = c.category_id
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        WHERE p.status = 'PUBLISHED'
+        ORDER BY (p.view_count * 0.2 + p.like_count * 0.3 + p.comment_count * 0.25 + 
+                 p.share_count * 0.1) * POW(0.2, TIMESTAMPDIFF(HOUR, p.created_at, NOW())) DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="getLatestHotPosts" resultMap="PostVOResultMap">
+        SELECT 
+            p.post_id, p.user_id, p.title, p.content, 
+            p.post_type, p.bounty_amount, p.bounty_status, p.emergency_level,
+            p.view_count, p.like_count, p.comment_count, p.share_count,
+            p.status, p.created_at, p.updated_at,
+            u.username, i.file_path as avatar, c.category_name
+        FROM post p
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.status = 'published'
+        AND p.created_at >= #{fromTime}
+        ORDER BY p.hot_score DESC, p.created_at DESC
+        LIMIT #{limit}
     </select>
 
 </mapper>

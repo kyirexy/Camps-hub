@@ -31,7 +31,7 @@ public interface AttachmentService {
      * @return 附件ID
      * @throws IOException 如果文件上传失败
      */
-    Long uploadFile(MultipartFile file, Long postId) throws IOException;
+    Long uploadFile(MultipartFile file, Long postId) throws Exception;
     
     /**
      * 批量上传文件
@@ -41,7 +41,7 @@ public interface AttachmentService {
      * @return 附件ID列表
      * @throws IOException 如果文件上传失败
      */
-    List<Long> uploadFiles(List<MultipartFile> files, Long postId) throws IOException;
+    List<Long> uploadFiles(List<MultipartFile> files, Long postId) throws Exception;
     
     /**
      * 根据ID查询附件
@@ -75,7 +75,7 @@ public interface AttachmentService {
      * @param fileId 附件ID
      * @return 是否删除成功
      */
-    boolean deleteAttachment(Long fileId);
+    boolean deleteAttachment(Long fileId) throws IOException;
     
     /**
      * 删除帖子相关的所有附件
@@ -83,7 +83,7 @@ public interface AttachmentService {
      * @param postId 帖子ID
      * @return 是否删除成功
      */
-    boolean deleteAttachmentsByPostId(Long postId);
+    boolean deleteAttachmentsByPostId(Long postId) throws IOException;
     
     /**
      * 生成文件缩略图

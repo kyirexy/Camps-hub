@@ -30,7 +30,10 @@ public interface TopicMapper {
      * @param topicId 话题ID
      * @return 话题实体
      */
-    @Select("SELECT * FROM topic WHERE topic_id = #{topicId}")
+    @Select("SELECT t.*, i.file_path as avatarUrl FROM topic t " +
+            "LEFT JOIN student_user u ON t.creator_id = u.user_id " +
+            "LEFT JOIN image i ON u.avatar_image_id = i.id " +
+            "WHERE t.topic_id = #{topicId}")
     Topic selectById(Integer topicId);
     
     /**
@@ -39,7 +42,10 @@ public interface TopicMapper {
      * @param topicName 话题名称
      * @return 话题实体
      */
-    @Select("SELECT * FROM topic WHERE topic_name = #{topicName}")
+    @Select("SELECT t.*, i.file_path as avatarUrl FROM topic t " +
+            "LEFT JOIN student_user u ON t.creator_id = u.user_id " +
+            "LEFT JOIN image i ON u.avatar_image_id = i.id " +
+            "WHERE t.topic_name = #{topicName}")
     Topic selectByName(String topicName);
     
     /**
@@ -48,7 +54,10 @@ public interface TopicMapper {
      * @param limit 限制数量
      * @return 话题列表
      */
-    @Select("SELECT * FROM topic ORDER BY usage_count DESC LIMIT #{limit}")
+    @Select("SELECT t.*, i.file_path as avatarUrl FROM topic t " +
+            "LEFT JOIN student_user u ON t.creator_id = u.user_id " +
+            "LEFT JOIN image i ON u.avatar_image_id = i.id " +
+            "ORDER BY t.usage_count DESC LIMIT #{limit}")
     List<Topic> selectHotTopics(int limit);
     
     /**
@@ -101,9 +110,20 @@ public interface TopicMapper {
      * @param postId 帖子ID
      * @return 话题列表
      */
-    @Select("SELECT t.* FROM topic t " +
+    @Select("SELECT t.*, u.username, i.file_path as avatarUrl FROM topic t " +
             "INNER JOIN post_topic pt ON t.topic_id = pt.topic_id " +
+            "LEFT JOIN student_user u ON t.creator_id = u.user_id " +
+            "LEFT JOIN image i ON u.avatar_image_id = i.id " +
             "WHERE pt.post_id = #{postId}")
+    @Results({
+        @Result(property = "topicId", column = "topic_id"),
+        @Result(property = "topicName", column = "topic_name"),
+        @Result(property = "creatorId", column = "creator_id"),
+        @Result(property = "usageCount", column = "usage_count"),
+        @Result(property = "createdAt", column = "created_at"),
+        @Result(property = "avatarUrl", column = "avatarUrl"),
+        @Result(property = "username", column = "username")
+    })
     List<Topic> selectByPostId(Long postId);
     
     /**
@@ -114,9 +134,11 @@ public interface TopicMapper {
      * @param pageSize 限制数量
      * @return 话题列表
      */
-    @Select("SELECT * FROM topic " +
-            "WHERE topic_name LIKE CONCAT('%', #{keyword}, '%') " +
-            "ORDER BY usage_count DESC LIMIT #{offset}, #{pageSize}")
+    @Select("SELECT t.*, i.file_path as avatarUrl FROM topic t " +
+            "LEFT JOIN student_user u ON t.creator_id = u.user_id " +
+            "LEFT JOIN image i ON u.avatar_image_id = i.id " +
+            "WHERE t.topic_name LIKE CONCAT('%', #{keyword}, '%') " +
+            "ORDER BY t.usage_count DESC LIMIT #{offset}, #{pageSize}")
     List<Topic> search(@Param("keyword") String keyword,
                       @Param("offset") int offset,
                       @Param("pageSize") int pageSize);

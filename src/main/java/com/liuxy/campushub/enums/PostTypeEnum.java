@@ -1,31 +1,28 @@
 package com.liuxy.campushub.enums;
 
-public enum PostTypeEnum {
-    NORMAL("normal", "普通帖子"),
-    BOUNTY("bounty", "悬赏帖子");
+import com.baomidou.mybatisplus.annotation.IEnum;
 
-    private final String code;
-    private final String description;
+public enum PostTypeEnum implements IEnum<String> {
+    NORMAL("normal"),
+    BOUNTY("bounty");
 
-    PostTypeEnum(String code, String description) {
-        this.code = code;
-        this.description = description;
+    private final String value;
+
+    PostTypeEnum(String value) {
+        this.value = value;
     }
 
-    public String getCode() {
-        return code;
+    @Override
+    public String getValue() {
+        return this.value;
     }
 
-    public String getDescription() {
-        return description;
-    }
-
-    public static PostTypeEnum fromCode(String code) {
+    public static PostTypeEnum fromValue(String value) {
         for (PostTypeEnum type : values()) {
-            if (type.getCode().equals(code)) {
+            if (type.value.equals(value)) {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Invalid post type code: " + code);
+        throw new IllegalArgumentException("Unknown PostTypeEnum value: " + value);
     }
 }

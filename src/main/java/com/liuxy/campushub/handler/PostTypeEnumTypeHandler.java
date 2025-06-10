@@ -15,24 +15,24 @@ public class PostTypeEnumTypeHandler extends BaseTypeHandler<PostTypeEnum> {
 
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, PostTypeEnum parameter, JdbcType jdbcType) throws SQLException {
-        ps.setString(i, parameter.getCode());
+        ps.setString(i, parameter.getValue());
     }
 
     @Override
     public PostTypeEnum getNullableResult(ResultSet rs, String columnName) throws SQLException {
-        String code = rs.getString(columnName);
-        return code == null ? null : PostTypeEnum.fromCode(code);
+        String value = rs.getString(columnName);
+        return value == null ? null : PostTypeEnum.fromValue(value);
     }
 
     @Override
     public PostTypeEnum getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
-        String code = rs.getString(columnIndex);
-        return code == null ? null : PostTypeEnum.fromCode(code);
+        String value = rs.getString(columnIndex);
+        return value == null ? null : PostTypeEnum.fromValue(value);
     }
 
     @Override
     public PostTypeEnum getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
-        String code = cs.getString(columnIndex);
-        return code == null ? null : PostTypeEnum.fromCode(code);
+        String value = cs.getString(columnIndex);
+        return value == null ? null : PostTypeEnum.fromValue(value);
     }
 } 

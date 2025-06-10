@@ -5,6 +5,7 @@ import com.liuxy.campushub.enums.PostTypeEnum;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -80,10 +81,20 @@ public class Post {
     private String username;
 
     @Transient
+    @JsonProperty
     private String avatar;
     
     @Transient
     private Double hotness; // 热度值，不持久化到数据库
+
+    @Column(nullable = false, precision = 12, scale = 4, columnDefinition = "decimal(12,4) default 0.0000")
+    private BigDecimal hotScore = BigDecimal.ZERO;
+
+    @Column(name = "last_hot_calc")
+    private LocalDateTime lastHotCalc = LocalDateTime.now();
+
+    @Column(nullable = false, columnDefinition = "int unsigned default 0")
+    private Integer weightedComments = 0;
 
     // 多对多关联：帖子-话题（延迟加载，空间优化：初始化空列表避免NPE）
     @ManyToMany(fetch = FetchType.LAZY)
@@ -102,31 +113,3 @@ public class Post {
         this.content = content;
     }
 }
-
-/*
-// 补充：状态枚举类（建议新增，提高类型安全）
-public enum PostStatusEnum {
-    DRAFT("draft"),
-    PUBLISHED("published"),
-    CLOSED("closed"),
-    DELETED("deleted");
-
-    private final String status;
-
-    PostStatusEnum(String status) {
-        this.status = status;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public static PostStatusEnum fromCode(String code) {
-        for (PostStatusEnum status : values()) {
-            if (status.getStatus().equals(code)) {
-                return status;
-            }
-        }
-        throw new IllegalArgumentException("Invalid post status code: " + code);
-    }
-}*/
