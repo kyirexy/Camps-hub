@@ -4,7 +4,9 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONArray;
 import com.liuxy.campushub.dto.ChatRequest;
 import com.liuxy.campushub.dto.ChatResponse;
+import com.liuxy.campushub.dto.ChatMessage;
 import com.liuxy.campushub.service.AIChatService;
+import com.liuxy.campushub.service.ChatContextService;
 import com.liuxy.campushub.utils.SparkAIUtil;
 import okhttp3.Response;
 import okhttp3.WebSocket;
@@ -17,14 +19,19 @@ import org.slf4j.LoggerFactory;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.List;
 
 @Service
 public class AIChatServiceImpl implements AIChatService {
     
     private static final Logger logger = LoggerFactory.getLogger(AIChatServiceImpl.class);
+    private static final int MAX_HISTORY_LENGTH = 10;
     
     @Autowired
     private SparkAIUtil sparkAIUtil;
+    
+    @Autowired
+    private ChatContextService chatContextService;
     
     @Override
     public ChatResponse chat(ChatRequest request) {
@@ -34,6 +41,10 @@ public class AIChatServiceImpl implements AIChatService {
             if (sessionId == null) {
                 sessionId = UUID.randomUUID().toString();
             }
+            
+            // 保存用户消息到上下文
+            ChatMessage userMessage = ChatMessage.createUserMessage(request.getMessage());
+            chatContextService.saveMessage(sessionId, userMessage);
             
             // 创建返回结果的 CompletableFuture
             CompletableFuture<String> responseFuture = new CompletableFuture<>();
@@ -56,7 +67,11 @@ public class AIChatServiceImpl implements AIChatService {
                         
                         // 如果是最后一条消息，完成 Future
                         if (choices.getInteger("status") == 2) {
-                            responseFuture.complete(responseBuilder.toString());
+                            String finalResponse = responseBuilder.toString();
+                            // 保存助手回复到上下文
+                            ChatMessage assistantMessage = ChatMessage.createAssistantMessage(finalResponse);
+                            chatContextService.saveMessage(sessionId, assistantMessage);
+                            responseFuture.complete(finalResponse);
                             webSocket.close(1000, "正常关闭");
                         }
                     } else {
@@ -75,6 +90,9 @@ public class AIChatServiceImpl implements AIChatService {
             
             // 创建 WebSocket 连接
             WebSocket webSocket = sparkAIUtil.createWebSocket(listener);
+            
+            // 获取历史消息
+            List<ChatMessage> history = chatContextService.getRecentHistory(sessionId, MAX_HISTORY_LENGTH);
             
             // 构建请求消息
             JSONObject requestJson = new JSONObject();
@@ -100,11 +118,17 @@ public class AIChatServiceImpl implements AIChatService {
             // 添加 payload
             JSONObject payload = new JSONObject();
             JSONObject message = new JSONObject();
-            JSONObject[] text = new JSONObject[1];
-            text[0] = new JSONObject();
-            text[0].put("role", "user");
-            text[0].put("content", request.getMessage());
-            message.put("text", text);
+            
+            // 构建历史消息数组
+            JSONArray textArray = new JSONArray();
+            for (ChatMessage msg : history) {
+                JSONObject textObj = new JSONObject();
+                textObj.put("role", msg.getRole());
+                textObj.put("content", msg.getContent());
+                textArray.add(textObj);
+            }
+            
+            message.put("text", textArray);
             payload.put("message", message);
             requestJson.put("payload", payload);
             
