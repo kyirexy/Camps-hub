@@ -1,0 +1,69 @@
+#jwt:
+#  secret: your-secret-key-should-be-very-long-and-secure
+#  expiration: 86400  # 24 hours in seconds
+#
+#logging:
+#  level:
+#    root: INFO
+#    com.liuxy.campushub: DEBUG
+#    org.springframework.web: DEBUG
+#    org.springframework.security: DEBUG
+#    org.springframework.web.multipart: DEBUG
+#    com.zaxxer.hikari: ERROR
+#    com.zaxxer.hikari.HikariConfig: ERROR
+#    com.zaxxer.hikari.pool.HikariPool: ERROR
+#
+#ai:
+#  api:
+#    appid: 9c5bc113
+#    secret: NTYxNzdkOGFlN2FiYjZhZDY3NThlNjIw
+#    key: 718de08d74e1ff9fb2414cff5cb3b2f5
+#
+#spark:
+#  chat:
+#    app-id: 9c5bc113
+#    secret: NTYxNzdkOGFlN2FiYjZhZDY3NThlNjIw
+#    api-key: 718de08d74e1ff9fb2414cff5cb3b2f5
+#    repo-id: 2a847196216341fe9fae82a6f2fb31c8
+#    file-ids: ["2a847196216341fe9fae82a6f2fb31c8"]
+#    top-n: 5
+#    retrieval-filter-policy: REGULAR
+#    temperature: 0.5
+#    qa-mode: MIX
+#    websocket-url: wss://spark-api.xf-yun.com/v4.0/chat
+#    http-url: https://spark-api-open.xf-yun.com/v1/chat/completions
+#
+#spark:
+#  app-id: your_app_id
+#  secret: your_secret
+#  repo-id: your_repo_id
+#  file-ids: ["file_id1", "file_id2"]
+#  top-n: 5
+#  retrieval-filter-policy: REGULAR
+#  temperature: 0.5
+#  qa-mode: MIX
+#
+#mybatis:
+#  type-handlers-package: com.liuxy.campushub.handler
+#  configuration:
+#    map-underscore-to-camel-case: true
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+#
+#spring:
+#  servlet:
+#    multipart:
+#      enabled: true
+#      location: ${java.io.tmpdir}
+#      file-size-threshold: 0
+#      resolve-lazily: false
+#      logging:
+#        enabled: true
+#        level: DEBUG
+#      max-file-size: 20MB
+#      max-request-size: 20MB
+#
+#upload:
+#  avatar:
+#    path: /data/images/avatars
+#    url: http://117.72.104.119/avatars
+#    allowed-types: jpg,jpeg,png,gif

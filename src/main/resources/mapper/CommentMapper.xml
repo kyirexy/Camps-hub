@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liuxy.campushub.mapper.CommentMapper">
+
+    <resultMap id="BaseResultMap" type="com.liuxy.campushub.entity.Comment">
+        <id column="comment_id" property="commentId" jdbcType="BIGINT"/>
+        <result column="post_id" property="postId" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="parent_id" property="parentId" jdbcType="BIGINT"/>
+        <result column="content" property="content" jdbcType="VARCHAR"/>
+        <result column="like_count" property="likeCount" jdbcType="INTEGER"/>
+        <result column="status" property="status" typeHandler="com.liuxy.campushub.handler.CommentStatusEnumTypeHandler"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <resultMap id="CommentVOResultMap" type="com.liuxy.campushub.vo.CommentVO">
+        <id column="comment_id" property="commentId"/>
+        <result column="post_id" property="postId"/>
+        <result column="user_id" property="userId"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="content" property="content"/>
+        <result column="like_count" property="likeCount"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="username" property="username"/>
+        <result column="avatar" property="avatar"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        comment_id, post_id, user_id, parent_id, content, like_count, status, created_at
+    </sql>
+
+    <insert id="insert" parameterType="com.liuxy.campushub.entity.Comment" useGeneratedKeys="true" keyProperty="commentId">
+        INSERT INTO comment (
+            post_id, user_id, parent_id, content, like_count, status, created_at
+        )
+        VALUES (
+            #{postId}, #{userId}, #{parentId}, #{content}, #{likeCount}, #{status}, NOW()
+        )
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        SELECT <include refid="Base_Column_List"/>
+        FROM comment
+        WHERE comment_id = #{commentId}
+    </select>
+
+    <select id="selectByPostId" resultMap="CommentVOResultMap" parameterType="java.lang.Long">
+        SELECT 
+            c.comment_id, c.post_id, c.user_id, c.parent_id, c.content, 
+            c.like_count, c.created_at,
+            u.username, i.file_path as avatar
+        FROM comment c
+        LEFT JOIN student_user u ON c.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        WHERE c.post_id = #{postId}
+        AND c.status = 'normal'
+        AND c.parent_id = 0
+        ORDER BY c.created_at DESC
+    </select>
+
+    <select id="selectByParentId" resultMap="CommentVOResultMap" parameterType="java.lang.Long">
+        SELECT 
+            c.comment_id, c.post_id, c.user_id, c.parent_id, c.content, 
+            c.like_count, c.created_at,
+            u.username, i.file_path as avatar
+        FROM comment c
+        LEFT JOIN student_user u ON c.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        WHERE c.parent_id = #{parentId}
+        AND c.status = 'normal'
+        ORDER BY c.created_at ASC
+    </select>
+
+    <update id="updateById" parameterType="com.liuxy.campushub.entity.Comment">
+        UPDATE comment
+        <set>
+            <if test="content != null">content = #{content},</if>
+            <if test="likeCount != null">like_count = #{likeCount},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE comment_id = #{commentId}
+    </update>
+
+    <update id="deleteById" parameterType="java.lang.Long">
+        UPDATE comment SET status = 'deleted' WHERE comment_id = #{commentId}
+    </update>
+
+    <update id="incrementLikeCount" parameterType="java.lang.Long">
+        UPDATE comment SET like_count = like_count + 1 WHERE comment_id = #{commentId}
+    </update>
+
+    <select id="selectByUserId" resultMap="CommentVOResultMap">
+        SELECT 
+            c.comment_id, c.post_id, c.user_id, c.parent_id, c.content, 
+            c.like_count, c.created_at,
+            u.username, i.file_path as avatar
+        FROM comment c
+        LEFT JOIN student_user u ON c.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        WHERE c.user_id = #{userId}
+        AND c.status = 'normal'
+        ORDER BY c.created_at DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectForPage" resultMap="CommentVOResultMap" parameterType="java.util.Map">
+        SELECT 
+            c.comment_id, c.post_id, c.user_id, c.parent_id, c.content, 
+            c.like_count, c.created_at,
+            u.username, i.file_path as avatar
+        FROM comment c
+        LEFT JOIN student_user u ON c.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        <where>
+            <if test="postId != null">
+                AND c.post_id = #{postId}
+            </if>
+            <if test="userId != null">
+                AND c.user_id = #{userId}
+            </if>
+            <if test="parentId != null">
+                AND c.parent_id = #{parentId}
+            </if>
+            <if test="status != null">
+                AND c.status = #{status}
+            </if>
+        </where>
+        ORDER BY c.created_at DESC
+        <if test="offset != null and pageSize != null">
+            LIMIT #{offset}, #{pageSize}
+        </if>
+    </select>
+
+</mapper> 

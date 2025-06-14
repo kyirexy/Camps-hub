@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liuxy.campushub.mapper.PostMapper">
+
+    <resultMap id="BaseResultMap" type="com.liuxy.campushub.entity.Post">
+        <id column="post_id" property="postId" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="category_id" property="categoryId" jdbcType="INTEGER"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="content" property="content" jdbcType="VARCHAR"/>
+        <result column="post_type" property="postType" typeHandler="com.liuxy.campushub.handler.PostTypeEnumTypeHandler"/>
+        <result column="bounty_amount" property="bountyAmount" jdbcType="DECIMAL"/>
+        <result column="bounty_status" property="bountyStatus" typeHandler="com.liuxy.campushub.handler.BountyStatusEnumTypeHandler"/>
+        <result column="emergency_level" property="emergencyLevel" jdbcType="INTEGER"/>
+        <result column="view_count" property="viewCount" jdbcType="INTEGER"/>
+        <result column="like_count" property="likeCount" jdbcType="INTEGER"/>
+        <result column="comment_count" property="commentCount" jdbcType="INTEGER"/>
+        <result column="share_count" property="shareCount" jdbcType="INTEGER"/>
+        <result column="status" property="status" typeHandler="com.liuxy.campushub.handler.PostStatusEnumTypeHandler"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <resultMap id="PostVOResultMap" type="com.liuxy.campushub.vo.PostVO">
+        <id column="post_id" property="postId"/>
+        <result column="user_id" property="userId"/>
+        <result column="title" property="title"/>
+        <result column="content" property="content"/>
+        <result column="category_name" property="categoryName"/>
+        <result column="post_type" property="postType" typeHandler="com.liuxy.campushub.handler.PostTypeEnumTypeHandler"/>
+        <result column="bounty_amount" property="bountyAmount"/>
+        <result column="emergency_level" property="emergencyLevel"/>
+        <result column="view_count" property="viewCount"/>
+        <result column="like_count" property="likeCount"/>
+        <result column="comment_count" property="commentCount"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="username" property="username"/>
+        <result column="avatar" property="avatar"/>
+    </resultMap>
+
+    <resultMap id="PostDetailResultMap" type="com.liuxy.campushub.entity.Post">
+        <id column="post_id" property="postId" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="category_id" property="categoryId" jdbcType="INTEGER"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="content" property="content" jdbcType="VARCHAR"/>
+        <result column="post_type" property="postType" typeHandler="com.liuxy.campushub.handler.PostTypeEnumTypeHandler"/>
+        <result column="bounty_amount" property="bountyAmount" jdbcType="DECIMAL"/>
+        <result column="bounty_status" property="bountyStatus" typeHandler="com.liuxy.campushub.handler.BountyStatusEnumTypeHandler"/>
+        <result column="emergency_level" property="emergencyLevel" jdbcType="INTEGER"/>
+        <result column="view_count" property="viewCount" jdbcType="INTEGER"/>
+        <result column="like_count" property="likeCount" jdbcType="INTEGER"/>
+        <result column="comment_count" property="commentCount" jdbcType="INTEGER"/>
+        <result column="share_count" property="shareCount" jdbcType="INTEGER"/>
+        <result column="status" property="status" typeHandler="com.liuxy.campushub.handler.PostStatusEnumTypeHandler"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="avatar" property="avatar" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        p.post_id, p.user_id, p.category_id, p.title, p.content, p.status, p.post_type, p.bounty_status,
+        p.view_count, p.like_count, p.comment_count, p.share_count, p.created_at, p.updated_at
+    </sql>
+
+    <insert id="insert" parameterType="com.liuxy.campushub.entity.Post" useGeneratedKeys="true" keyProperty="postId">
+        INSERT INTO post (
+            user_id, category_id, title, content, status, post_type, bounty_status,
+            view_count, like_count, comment_count, share_count,
+            created_at, updated_at
+        )
+        VALUES (
+                   #{userId}, #{categoryId}, #{title}, #{content}, #{status}, #{postType}, #{bountyStatus},
+                   #{viewCount}, #{likeCount}, #{commentCount}, #{shareCount},
+                   NOW(), NOW()
+               )
+    </insert>
+
+    <update id="updateById" parameterType="com.liuxy.campushub.entity.Post">
+        UPDATE post
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="viewCount != null">view_count = #{viewCount},</if>
+            <if test="likeCount != null">like_count = #{likeCount},</if>
+            <if test="commentCount != null">comment_count = #{commentCount},</if>
+            <if test="shareCount != null">share_count = #{shareCount},</if>
+            updated_at = NOW()
+        </set>
+        WHERE post_id = #{postId}
+    </update>
+
+    <select id="selectById" resultMap="PostDetailResultMap" parameterType="java.lang.Long">
+        SELECT 
+            p.post_id, p.user_id, p.category_id, p.title, p.content, 
+            p.post_type, p.bounty_amount, p.bounty_status, p.emergency_level,
+            p.view_count, p.like_count, p.comment_count, p.share_count,
+            p.status, p.created_at, p.updated_at,
+            u.username, i.file_path as avatar
+        FROM post p
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        WHERE p.post_id = #{postId}
+    </select>
+
+    <update id="incrementViewCount">
+        UPDATE post SET view_count = view_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <update id="incrementLikeCount">
+        UPDATE post SET like_count = like_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <update id="incrementCommentCount">
+        UPDATE post SET comment_count = comment_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <update id="incrementShareCount">
+        UPDATE post SET share_count = share_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <select id="selectPostsByTime" resultMap="PostVOResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+        u.username,
+        i.file_path as avatar,
+        c.category_name
+        FROM post p
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.status = 'published'
+        <if test="lastTime != null">
+            AND p.created_at <![CDATA[ < ]]> #{lastTime}
+        </if>
+        ORDER BY p.created_at DESC
+        LIMIT #{pageSize}
+    </select>
+
+    <select id="selectByCategoryForScroll" resultMap="PostVOResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+        u.username,
+        i.file_path as avatar,
+        c.category_name
+        FROM post p
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.category_id = #{categoryId}
+        AND p.status = 'published'
+        <if test="lastTime != null">
+            AND p.created_at <![CDATA[ < ]]> #{lastTime}
+        </if>
+        ORDER BY p.created_at DESC
+        LIMIT #{pageSize}
+    </select>
+
+    <select id="selectByUserForScroll" resultMap="PostVOResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+        u.username,
+        i.file_path as avatar,
+        c.category_name
+        FROM post p
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.user_id = #{userId}
+        AND p.status = 'published'
+        <if test="lastTime != null">
+            AND p.created_at <![CDATA[ < ]]> #{lastTime}
+        </if>
+        ORDER BY p.created_at DESC
+        LIMIT #{pageSize}
+    </select>
+
+    <select id="getPostsWaterfall" resultMap="PostVOResultMap">
+        SELECT 
+            p.post_id, p.user_id, p.title, p.content, 
+            p.post_type, p.bounty_amount, p.bounty_status, p.emergency_level,
+            p.view_count, p.like_count, p.comment_count, p.share_count,
+            p.status, p.created_at, p.updated_at,
+            u.username, i.file_path as avatar, c.category_name
+        FROM post p
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.status = #{status}
+        <if test="lastTime != null">
+            AND p.created_at <![CDATA[ < ]]> #{lastTime}
+        </if>
+        ORDER BY p.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectForScroll" resultMap="PostVOResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+        u.username,
+        i.file_path as avatar,
+        c.category_name
+        FROM post p
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.status = 'published'
+        <if test="lastTime != null">
+            AND p.created_at <![CDATA[ < ]]> #{lastTime}
+        </if>
+        ORDER BY p.created_at DESC
+        LIMIT #{pageSize}
+    </select>
+
+    <insert id="insertPostTopics">
+        INSERT INTO post_topic (post_id, topic_id)
+        VALUES
+        <foreach collection="topicIds" item="topicId" separator=",">
+            (#{postId}, #{topicId})
+        </foreach>
+    </insert>
+
+    <delete id="deletePostTopicsByPostId">
+        DELETE FROM post_topic WHERE post_id = #{postId}
+    </delete>
+
+    <select id="getPostDetail" resultMap="PostDetailResultMap">
+        SELECT p.*, t.topic_id, t.name as topic_name, t.description as topic_description,
+               u.username, u.avatar
+        FROM post p
+        LEFT JOIN post_topic pt ON p.post_id = pt.post_id
+        LEFT JOIN topic t ON pt.topic_id = t.topic_id
+        LEFT JOIN user u ON p.user_id = u.user_id
+        WHERE p.post_id = #{postId}
+    </select>
+
+    <select id="selectByUser" resultType="com.liuxy.campushub.vo.PostVO">
+        SELECT 
+            p.post_id as id,
+            p.title,
+            p.content,
+            p.user_id as userId,
+            p.created_at as createTime,
+            p.updated_at as updateTime,
+            p.status,
+            u.username as authorName,
+            i.file_path as authorAvatar,
+            p.comment_count as commentCount,
+            p.like_count as likeCount
+        FROM post p
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        WHERE p.user_id = #{userId}
+        AND p.status = 'published'
+        ORDER BY p.created_at DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="findAllByStatus" resultMap="BaseResultMap">
+        SELECT * FROM post WHERE status = #{status}
+    </select>
+
+    <select id="findPostVOsByIds" resultMap="PostVOResultMap">
+        SELECT p.*, c.category_name, u.username, i.file_path as avatar 
+        FROM post p 
+        LEFT JOIN category c ON p.category_id = c.category_id 
+        LEFT JOIN student_user u ON p.user_id = u.user_id 
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        WHERE p.post_id IN 
+        <foreach collection="postIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY FIELD(p.post_id, 
+        <foreach collection="postIds" item="id" separator=",">
+            #{id}
+        </foreach>
+        )
+    </select>
+
+    <select id="getHotPosts" resultMap="PostVOResultMap">
+        SELECT p.*, c.category_name, u.username, i.file_path as avatar 
+        FROM post p
+        LEFT JOIN category c ON p.category_id = c.category_id
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        WHERE p.status = 'PUBLISHED'
+        ORDER BY (p.view_count * 0.2 + p.like_count * 0.3 + p.comment_count * 0.25 + 
+                 p.share_count * 0.1) * POW(0.2, TIMESTAMPDIFF(HOUR, p.created_at, NOW())) DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="getLatestHotPosts" resultMap="PostVOResultMap">
+        SELECT 
+            p.post_id, p.user_id, p.title, p.content, 
+            p.post_type, p.bounty_amount, p.bounty_status, p.emergency_level,
+            p.view_count, p.like_count, p.comment_count, p.share_count,
+            p.status, p.created_at, p.updated_at,
+            u.username, i.file_path as avatar, c.category_name
+        FROM post p
+        LEFT JOIN student_user u ON p.user_id = u.user_id
+        LEFT JOIN image i ON u.avatar_image_id = i.id
+        LEFT JOIN category c ON p.category_id = c.category_id
+        WHERE p.status = 'published'
+        AND p.created_at >= #{fromTime}
+        ORDER BY p.hot_score DESC, p.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
