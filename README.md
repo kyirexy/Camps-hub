@@ -7,6 +7,8 @@
 ![image](https://github.com/user-attachments/assets/5b5ec86b-6d7c-4b1b-a937-a900f73bc90e)
 ![image](https://github.com/user-attachments/assets/c8e5712b-aa54-4d92-b901-408fa7a58116)
 ![image](https://github.com/user-attachments/assets/eaf73a91-61b8-431d-bfc8-64cd3ac4d265)
+![image](https://github.com/user-attachments/assets/21219328-bd6d-4075-91a8-79cc6a2fd4ce)
+![image](https://github.com/user-attachments/assets/154c3365-2c9f-46ac-bccd-4da77f22b745)
 
 ## 一、项目概述
 哈狸集行是一款聚焦本校学生，未来计划拓展至多校的 AI+ 大学综合服务平台。整合二手交易、课程表查询、校园活动、信息发布等功能，搭配校内专属 AI 助手，覆盖 Web 网页端、uniapp 开发的移动端（小程序 + App ），打造便捷、丰富的校园服务生态。
